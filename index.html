@@ -2680,9 +2680,7 @@ function showToast(message){
 
 
 /* =========================================================
-   IDEA LAB — AI IDEA GENERATOR
-   Calls the secure Vercel backend.
-   The Gemini API key lives ONLY in Vercel env vars.
+   IDEA LAB  (Gemini backend via Vercel)
 ========================================================= */
 
 async function generateIdeas() {
@@ -2706,27 +2704,14 @@ async function generateIdeas() {
     const status =
         document.getElementById("ideaStatus");
 
-    status.textContent = "Generating...";
+    status.textContent = "Generating with Gemini...";
 
-    results.innerHTML = "";
-
-    const loading = document.createElement("div");
-    loading.style.textAlign = "center";
-    loading.style.padding = "60px";
-    loading.style.color = "var(--muted)";
-
-    const loadingIcon = document.createElement("div");
-    loadingIcon.textContent = "✦";
-    loadingIcon.style.fontSize = "30px";
-    loadingIcon.style.marginBottom = "10px";
-
-    const loadingText = document.createElement("div");
-    loadingText.textContent = "Creating your ideas...";
-
-    loading.appendChild(loadingIcon);
-    loading.appendChild(loadingText);
-
-    results.appendChild(loading);
+    results.innerHTML = `
+        <div style="text-align:center;padding:60px;color:var(--muted);">
+            <div style="font-size:30px;margin-bottom:10px;">✦</div>
+            Gemini is creating your ideas...
+        </div>
+    `;
 
     const prompt = `
 You are the AI Idea Director for The Inner Edge.
@@ -2741,25 +2726,20 @@ Topic: ${topic}
 Format: ${format}
 Style: ${style}
 
-Target audience:
-18–35 year olds interested in psychology,
-self-improvement, Stoicism, AI, money,
-productivity, human behavior and curiosity.
+Audience:
+18–35 year olds interested in psychology, self-improvement,
+Stoicism, AI, money, productivity, human behavior and curiosity.
 
 For each idea provide:
-
 1. Title
 2. Hook
-3. Core Idea
-4. Why People Will Care
+3. Core idea
+4. Why people will care
 
-Requirements:
-- Original and specific
-- Strong curiosity-driven hooks
-- Educational and practical
-- Suitable for TikTok, YouTube Shorts and Instagram Reels
-- Avoid generic motivational clichés
-- Clear, engaging language
+Make the ideas specific, useful, curiosity-driven and suitable
+for TikTok, YouTube Shorts and Instagram Reels.
+
+Do not use generic motivational clichés.
 `;
 
     try {
@@ -2777,81 +2757,58 @@ Requirements:
             }
         );
 
-        let data = {};
-
-        try {
-            data = await response.json();
-        } catch (parseError) {
-            data = {};
-        }
+        const data = await response.json();
 
         if (!response.ok) {
             throw new Error(
-                data.error || ("AI request failed (" + response.status + ")")
+                data.error || "AI request failed"
             );
         }
 
-        const text =
-            (data.text || data.output || "").trim();
+        results.innerHTML = `
+            <div style="padding:30px;">
+                <div style="font-size:14px;color:var(--gold);margin-bottom:15px;">
+                    ✦ GEMINI AI IDEAS
+                </div>
 
-        if (!text) {
-            throw new Error("The AI returned an empty response.");
-        }
+                <div style="
+                    white-space:pre-wrap;
+                    line-height:1.7;
+                    color:var(--text);
+                ">
+                    ${escapeHtml(data.text || "No ideas generated.")}
+                </div>
+            </div>
+        `;
 
-        results.innerHTML = "";
-
-        const wrapper = document.createElement("div");
-        wrapper.style.padding = "24px";
-
-        const heading = document.createElement("div");
-        heading.textContent = "✦ AI IDEAS";
-        heading.style.fontSize = "14px";
-        heading.style.color = "var(--gold)";
-        heading.style.letterSpacing = ".08em";
-        heading.style.marginBottom = "15px";
-
-        const content = document.createElement("div");
-        content.textContent = text;
-        content.style.whiteSpace = "pre-wrap";
-        content.style.lineHeight = "1.7";
-        content.style.color = "var(--text)";
-        content.style.fontSize = "13px";
-
-        wrapper.appendChild(heading);
-        wrapper.appendChild(content);
-
-        results.appendChild(wrapper);
-
-        status.textContent = "Ideas ready";
-
-        showToast("AI ideas generated for " + topic + ".");
+        status.textContent = "AI ideas generated";
 
     } catch (error) {
 
-        console.error("Idea generation error:", error);
+        console.error(error);
 
         status.textContent = "Generation failed";
 
-        results.innerHTML = "";
-
-        const errorBox = document.createElement("div");
-        errorBox.style.padding = "30px";
-        errorBox.style.color = "var(--red)";
-
-        const errorTitle = document.createElement("strong");
-        errorTitle.textContent = "AI generation failed.";
-
-        const errorMessage = document.createElement("div");
-        errorMessage.style.marginTop = "10px";
-        errorMessage.style.color = "var(--muted)";
-        errorMessage.textContent =
-            error.message || "Please try again.";
-
-        errorBox.appendChild(errorTitle);
-        errorBox.appendChild(errorMessage);
-
-        results.appendChild(errorBox);
+        results.innerHTML = `
+            <div style="padding:30px;color:var(--red);">
+                <strong>AI generation failed.</strong>
+                <br><br>
+                Please try again.
+            </div>
+        `;
     }
+}
+
+
+function escapeHtml(value){
+
+    return String(value)
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#39;");
+
 }
 
 
