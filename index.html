@@ -4,40 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>The Inner Edge — Master Your Mind. Master Your Life.</title>
-
-<meta name="description" content="The Inner Edge explores psychology, Stoicism, discipline, money, AI, technology, productivity, critical thinking, and human behavior.">
-<meta name="keywords" content="The Inner Edge, psychology, Stoicism, discipline, self improvement, AI, money, productivity, human behavior, critical thinking">
-<meta name="author" content="The Inner Edge">
-
-<meta property="og:title" content="The Inner Edge">
-<meta property="og:description" content="Master your mind. Master your life.">
-<meta property="og:type" content="website">
+<title>The Inner Edge</title>
 
 <style>
-
-/* =========================
-   CORE
-========================= */
-
-:root {
-  --bg: #07080c;
-  --bg2: #0c0e14;
-  --card: rgba(255,255,255,0.045);
-  --card-hover: rgba(255,255,255,0.075);
-  --text: #f4f4f5;
-  --muted: #9a9da8;
-  --gold: #d6b45a;
-  --gold2: #f1d27a;
-  --line: rgba(255,255,255,0.09);
-  --green: #63e6be;
-  --radius: 22px;
-}
-
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 html {
@@ -45,461 +16,185 @@ html {
 }
 
 body {
-  background:
-    radial-gradient(circle at 80% 10%, rgba(214,180,90,0.09), transparent 28%),
-    radial-gradient(circle at 10% 30%, rgba(70,100,160,0.08), transparent 30%),
-    var(--bg);
-  color: var(--text);
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-  line-height: 1.6;
-  overflow-x: hidden;
+  margin: 0;
+  background: #08090d;
+  color: #f4f4f5;
+  font-family: Arial, Helvetica, sans-serif;
 }
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-button {
-  font: inherit;
-}
-
-.container {
-  width: min(1180px, 92%);
-  margin: auto;
-}
-
-/* =========================
-   NAVIGATION
-========================= */
 
 nav {
   position: sticky;
   top: 0;
-  z-index: 1000;
-  backdrop-filter: blur(18px);
-  background: rgba(7,8,12,0.78);
-  border-bottom: 1px solid var(--line);
-}
-
-.nav-inner {
-  height: 72px;
+  z-index: 100;
+  background: rgba(8,9,13,.92);
+  backdrop-filter: blur(15px);
+  border-bottom: 1px solid #22242b;
+  padding: 16px 6%;
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
 }
 
 .logo {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-}
-
-.logo-mark {
-  width: 38px;
-  height: 38px;
-  border: 1px solid rgba(214,180,90,0.5);
-  border-radius: 11px;
-  display: grid;
-  place-items: center;
-  color: var(--gold2);
-  font-size: 13px;
   font-weight: 900;
-  background: linear-gradient(145deg, rgba(214,180,90,.15), rgba(255,255,255,.02));
+  font-size: 20px;
+  letter-spacing: -.5px;
 }
 
 .logo span {
-  font-size: 15px;
+  color: #d9ad4c;
 }
 
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 25px;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.nav-links a:hover {
-  color: white;
-}
-
-.nav-cta {
-  border: 1px solid rgba(214,180,90,.4);
-  padding: 9px 15px;
-  border-radius: 999px;
-  color: var(--gold2) !important;
-}
-
-.menu-btn {
-  display: none;
-  border: 0;
-  background: transparent;
-  color: white;
-  font-size: 25px;
-}
-
-/* =========================
-   HERO
-========================= */
-
-.hero {
-  min-height: 88vh;
-  display: grid;
-  place-items: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.hero::before {
-  content: "";
-  position: absolute;
-  width: 620px;
-  height: 620px;
-  border-radius: 50%;
-  background: rgba(214,180,90,.08);
-  filter: blur(100px);
-  top: -240px;
-  right: -180px;
-}
-
-.hero-content {
-  position: relative;
-  max-width: 900px;
-  text-align: center;
-  padding: 90px 0;
-}
-
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--line);
-  background: rgba(255,255,255,.035);
-  padding: 8px 14px;
-  border-radius: 999px;
-  color: var(--gold2);
-  font-size: 12px;
-  margin-bottom: 28px;
-}
-
-.eyebrow-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 14px var(--green);
-}
-
-h1 {
-  font-size: clamp(48px, 8vw, 92px);
-  line-height: .98;
-  letter-spacing: -5px;
-  margin-bottom: 27px;
-}
-
-.gradient-text {
-  background: linear-gradient(100deg, #fff 10%, var(--gold2) 50%, #fff 90%);
-  -webkit-background-clip: text;
-  color: transparent;
-}
-
-.hero p {
-  max-width: 670px;
-  margin: auto;
-  color: var(--muted);
-  font-size: 18px;
-}
-
-.hero-buttons {
-  margin-top: 38px;
-  display: flex;
-  justify-content: center;
-  gap: 13px;
-  flex-wrap: wrap;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  padding: 13px 21px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  transition: .25s;
-  cursor: pointer;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, var(--gold2), var(--gold));
-  color: #111;
-  font-weight: 800;
-  border: none;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(214,180,90,.18);
-}
-
-.btn-secondary {
-  background: rgba(255,255,255,.035);
-}
-
-.btn-secondary:hover {
-  background: rgba(255,255,255,.08);
-}
-
-/* =========================
-   SECTIONS
-========================= */
-
-section {
-  padding: 100px 0;
-  border-top: 1px solid rgba(255,255,255,.045);
-}
-
-.section-head {
-  margin-bottom: 42px;
-}
-
-.kicker {
-  color: var(--gold2);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-
-.section-head h2 {
-  font-size: clamp(32px, 5vw, 54px);
-  line-height: 1.05;
-  letter-spacing: -2px;
-}
-
-.section-head p {
-  max-width: 650px;
-  color: var(--muted);
-  margin-top: 15px;
-}
-
-/* =========================
-   ABOUT
-========================= */
-
-.about-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 22px;
-}
-
-.about-card {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--card);
-  padding: 34px;
-}
-
-.about-card h3 {
-  font-size: 24px;
-  margin-bottom: 14px;
-}
-
-.about-card p {
-  color: var(--muted);
-}
-
-.big-number {
-  color: var(--gold2);
-  font-size: 58px;
-  font-weight: 900;
-  line-height: 1;
-  margin-bottom: 15px;
-}
-
-/* =========================
-   TOPICS
-========================= */
-
-.topic-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-}
-
-.topic {
-  min-height: 170px;
-  padding: 25px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: linear-gradient(145deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
-  transition: .3s;
-}
-
-.topic:hover {
-  transform: translateY(-5px);
-  background: var(--card-hover);
-  border-color: rgba(214,180,90,.35);
-}
-
-.topic-icon {
-  font-size: 25px;
-  margin-bottom: 24px;
-}
-
-.topic h3 {
-  font-size: 17px;
-  margin-bottom: 6px;
-}
-
-.topic p {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-/* =========================
-   CONTENT
-========================= */
-
-.content-grid {
-  display: grid;
-  grid-template-columns: 1.4fr .8fr;
-  gap: 20px;
-}
-
-.feature {
-  min-height: 420px;
-  border-radius: var(--radius);
-  padding: 35px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  border: 1px solid var(--line);
-  background:
-    linear-gradient(to top, rgba(0,0,0,.9), rgba(0,0,0,.05)),
-    radial-gradient(circle at 70% 20%, rgba(214,180,90,.2), transparent 35%),
-    #11131a;
-}
-
-.feature-label {
-  color: var(--gold2);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 12px;
-}
-
-.feature h3 {
-  font-size: 34px;
-  line-height: 1.1;
-  margin-bottom: 12px;
-}
-
-.feature p {
-  color: #b4b6be;
-}
-
-.content-side {
-  display: grid;
-  gap: 20px;
-}
-
-.content-card {
-  padding: 27px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--card);
-}
-
-.content-card h3 {
-  margin-bottom: 8px;
-}
-
-.content-card p {
-  color: var(--muted);
+nav a {
+  color: #aaa;
+  text-decoration: none;
+  margin-left: 22px;
   font-size: 14px;
 }
 
-/* =========================
-   CREATOR STUDIO
-========================= */
-
-.studio {
-  background:
-    radial-gradient(circle at 50% 0%, rgba(214,180,90,.07), transparent 35%);
+nav a:hover {
+  color: white;
 }
 
-.studio-shell {
-  border: 1px solid var(--line);
-  border-radius: 28px;
-  overflow: hidden;
-  background: rgba(12,14,20,.88);
-  box-shadow: 0 30px 100px rgba(0,0,0,.35);
-}
-
-.studio-top {
-  padding: 17px 22px;
-  border-bottom: 1px solid var(--line);
+.hero {
+  min-height: 75vh;
   display: flex;
   align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 20px;
+  background:
+    radial-gradient(circle at 50% 20%, #2a2110 0, transparent 35%),
+    linear-gradient(180deg,#090a0e,#08090d);
+}
+
+.hero h1 {
+  font-size: clamp(48px,8vw,100px);
+  margin: 0;
+  letter-spacing: -5px;
+}
+
+.gold {
+  color: #d9ad4c;
+}
+
+.hero p {
+  max-width: 700px;
+  margin: 25px auto;
+  color: #a7a9b1;
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.button {
+  display: inline-block;
+  background: #e6bd59;
+  color: #08090d;
+  border: none;
+  padding: 15px 25px;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.button:hover {
+  transform: translateY(-2px);
+}
+
+section {
+  max-width: 1180px;
+  margin: auto;
+  padding: 90px 25px;
+}
+
+.section-title {
+  font-size: 38px;
+  margin-bottom: 15px;
+}
+
+.section-text {
+  color: #92959e;
+  line-height: 1.7;
+  max-width: 760px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+  gap: 18px;
+  margin-top: 35px;
+}
+
+.card {
+  background: #101116;
+  border: 1px solid #24262d;
+  border-radius: 16px;
+  padding: 25px;
+}
+
+.card h3 {
+  margin-top: 0;
+}
+
+.card p {
+  color: #92959e;
+  line-height: 1.6;
+}
+
+/* STUDIO */
+
+.studio {
+  background: #0d0e13;
+  border: 1px solid #292b32;
+  border-radius: 22px;
+  overflow: hidden;
+  margin-top: 40px;
+}
+
+.studio-header {
+  padding: 22px 25px;
+  border-bottom: 1px solid #292b32;
+  display: flex;
   justify-content: space-between;
 }
 
-.studio-brand {
-  font-weight: 800;
-}
-
 .status {
-  color: var(--green);
-  font-size: 12px;
+  color: #52e0ba;
+  font-size: 13px;
 }
 
 .studio-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
   padding: 30px;
 }
 
-.studio-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 22px;
-}
-
-.studio-panel {
+.panel {
+  background: #111218;
+  border: 1px solid #272932;
+  border-radius: 16px;
   padding: 25px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: rgba(255,255,255,.025);
-}
-
-.studio-panel h3 {
-  margin-bottom: 17px;
 }
 
 label {
   display: block;
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 7px;
+  color: #999ca5;
+  font-size: 13px;
+  margin: 18px 0 8px;
 }
 
-input, textarea, select {
+input,
+select,
+textarea {
   width: 100%;
-  background: #080a0f;
+  background: #07080b;
   color: white;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  padding: 13px;
-  outline: none;
-  margin-bottom: 15px;
-}
-
-input:focus, textarea:focus {
-  border-color: rgba(214,180,90,.65);
+  border: 1px solid #292c34;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 15px;
 }
 
 textarea {
@@ -507,932 +202,632 @@ textarea {
   resize: vertical;
 }
 
-.preview {
-  min-height: 330px;
-  border-radius: 17px;
-  background:
-    linear-gradient(to top, rgba(0,0,0,.9), rgba(0,0,0,.15)),
-    radial-gradient(circle at 50% 25%, rgba(214,180,90,.18), transparent 40%),
-    #11141b;
-  display: flex;
-  align-items: flex-end;
-  padding: 25px;
+.generate {
+  margin-top: 22px;
+  width: 100%;
 }
 
-.preview-text {
-  font-size: 22px;
-  font-weight: 800;
+.output {
+  display: none;
 }
 
-/* =========================
-   PROCESS
-========================= */
-
-.process-grid {
-  display: grid;
-  grid-template-columns: repeat(4,1fr);
-  gap: 15px;
-}
-
-.process {
-  padding: 25px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--card);
-}
-
-.process-number {
-  color: var(--gold2);
-  font-size: 12px;
-  font-weight: 900;
-  margin-bottom: 22px;
-}
-
-.process h3 {
+.output h3 {
+  color: #d9ad4c;
   margin-bottom: 8px;
 }
 
-.process p {
-  color: var(--muted);
-  font-size: 14px;
+.output-box {
+  background: #08090d;
+  border: 1px solid #25272e;
+  border-radius: 10px;
+  padding: 15px;
+  color: #d6d7dc;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
-/* =========================
-   FAQ
-========================= */
-
-.faq {
-  max-width: 850px;
-}
-
-details {
-  border-bottom: 1px solid var(--line);
-  padding: 21px 0;
-}
-
-summary {
-  cursor: pointer;
-  font-weight: 700;
-}
-
-details p {
-  color: var(--muted);
-  margin-top: 12px;
-}
-
-/* =========================
-   CONTACT
-========================= */
-
-.contact-box {
+.loading {
+  display: none;
   text-align: center;
-  padding: 70px 25px;
-  border: 1px solid var(--line);
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(214,180,90,.11), transparent 45%),
-    var(--card);
+  padding: 20px;
+  color: #d9ad4c;
 }
 
-.contact-box h2 {
-  font-size: clamp(34px,5vw,58px);
-  margin-bottom: 15px;
+.workflow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
+  gap: 15px;
+  margin-top: 30px;
 }
 
-.contact-box p {
-  color: var(--muted);
-  max-width: 600px;
-  margin: auto auto 28px;
+.step {
+  padding: 22px;
+  background: #101116;
+  border: 1px solid #25272d;
+  border-radius: 14px;
 }
 
-/* =========================
-   FOOTER
-========================= */
+.step-number {
+  color: #d9ad4c;
+  font-weight: 900;
+  font-size: 13px;
+}
 
 footer {
-  padding: 45px 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid #22242a;
+  padding: 40px 25px;
+  text-align: center;
+  color: #777a83;
 }
 
-.footer-inner {
-  display: flex;
-  justify-content: space-between;
-  gap: 30px;
-  flex-wrap: wrap;
+footer a {
+  color: #d9ad4c;
+  margin: 0 8px;
+  text-decoration: none;
 }
 
-.footer-copy {
-  color: var(--muted);
-  font-size: 13px;
-}
+@media(max-width:800px) {
+  .studio-body {
+    grid-template-columns: 1fr;
+  }
 
-.footer-links {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.footer-links a:hover {
-  color: white;
-}
-
-/* =========================
-   MOBILE
-========================= */
-
-@media(max-width: 850px) {
-
-  .nav-links {
+  nav a {
     display: none;
   }
 
-  .menu-btn {
-    display: block;
-  }
-
-  h1 {
+  .hero h1 {
     letter-spacing: -3px;
   }
-
-  .about-grid,
-  .content-grid,
-  .studio-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .topic-grid {
-    grid-template-columns: repeat(2,1fr);
-  }
-
-  .process-grid {
-    grid-template-columns: repeat(2,1fr);
-  }
-
 }
-
-@media(max-width: 520px) {
-
-  section {
-    padding: 75px 0;
-  }
-
-  .topic-grid,
-  .process-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .hero {
-    min-height: 80vh;
-  }
-
-  .hero p {
-    font-size: 16px;
-  }
-
-  .about-card,
-  .feature,
-  .content-card {
-    padding: 25px;
-  }
-
-}
-
-/* =========================
-   ANIMATION
-========================= */
-
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.hero-content {
-  animation: fadeUp .8s ease both;
-}
-
 </style>
 </head>
 
 <body>
 
-<!-- =========================
-     NAV
-========================= -->
-
 <nav>
-<div class="container nav-inner">
+  <div class="logo">
+    <span>IE</span> The Inner Edge
+  </div>
 
-<a href="#top" class="logo">
-  <div class="logo-mark">IE</div>
-  <span>The Inner Edge</span>
-</a>
-
-<div class="nav-links">
-  <a href="#about">About</a>
-  <a href="#topics">Topics</a>
-  <a href="#content">Content</a>
-  <a href="#studio">Creator Studio</a>
-  <a href="#faq">FAQ</a>
-  <a href="#contact" class="nav-cta">Contact</a>
-</div>
-
-<button class="menu-btn" onclick="alert('Use the section links below to explore The Inner Edge.')">
-☰
-</button>
-
-</div>
+  <div>
+    <a href="#about">About</a>
+    <a href="#topics">Topics</a>
+    <a href="#studio">Studio</a>
+    <a href="#workflow">Workflow</a>
+    <a href="#contact">Contact</a>
+  </div>
 </nav>
 
 
-<main id="top">
+<!-- HERO -->
 
-<!-- =========================
-     HERO
-========================= -->
+<header class="hero">
 
-<section class="hero">
+  <div>
 
-<div class="container hero-content">
+    <h1>
+      THE <span class="gold">INNER</span> EDGE
+    </h1>
 
-<div class="eyebrow">
-<span class="eyebrow-dot"></span>
-Independent educational media
-</div>
+    <p>
+      Master your mind. Master your life.
+      Explore psychology, Stoicism, discipline, money,
+      AI, technology and human potential.
+    </p>
 
-<h1>
-Master your mind.<br>
-<span class="gradient-text">Master your life.</span>
-</h1>
+    <a href="#studio" class="button">
+      Enter Creator Studio
+    </a>
 
-<p>
-The Inner Edge explores the ideas, systems and mental models
-that shape how people think, work, decide and live.
-</p>
+  </div>
 
-<div class="hero-buttons">
-
-<a href="#content" class="btn btn-primary">
-Explore The Content →
-</a>
-
-<a href="#studio" class="btn btn-secondary">
-Creator Studio
-</a>
-
-</div>
-
-</div>
-
-</section>
+</header>
 
 
-<!-- =========================
-     ABOUT
-========================= -->
+<!-- ABOUT -->
 
 <section id="about">
 
-<div class="container">
+  <h2 class="section-title">
+    Think deeper. Build stronger.
+  </h2>
 
-<div class="section-head">
-<div class="kicker">The idea</div>
-<h2>Build the part of yourself<br>the world can't automate.</h2>
-<p>
-The Inner Edge is an educational media brand focused on
-practical knowledge for a rapidly changing world.
-</p>
-</div>
-
-<div class="about-grid">
-
-<div class="about-card">
-
-<div class="big-number">01</div>
-
-<h3>Think deeper.</h3>
-
-<p>
-We break down psychology, human behavior, philosophy,
-critical thinking and mental models into ideas that are
-easier to understand and apply.
-</p>
-
-</div>
-
-<div class="about-card">
-
-<div class="big-number">02</div>
-
-<h3>Live stronger.</h3>
-
-<p>
-We explore discipline, productivity, money, technology,
-health and personal development through educational
-stories and practical frameworks.
-</p>
-
-</div>
-
-</div>
-
-</div>
+  <p class="section-text">
+    The Inner Edge is an educational media platform focused on
+    ideas that help people understand their minds, improve their
+    decisions and build a stronger life.
+  </p>
 
 </section>
 
 
-<!-- =========================
-     TOPICS
-========================= -->
+<!-- TOPICS -->
 
 <section id="topics">
 
-<div class="container">
+  <h2 class="section-title">
+    Explore the Edge
+  </h2>
 
-<div class="section-head">
-<div class="kicker">Areas of focus</div>
-<h2>Ideas worth<br>understanding.</h2>
-<p>
-Our content connects timeless principles with the world
-people live in today.
-</p>
-</div>
+  <p class="section-text">
+    Our content covers the ideas shaping modern human performance.
+  </p>
 
-<div class="topic-grid">
+  <div class="grid">
 
-<div class="topic">
-<div class="topic-icon">🧠</div>
-<h3>Psychology</h3>
-<p>Thinking, behavior, biases and the human mind.</p>
-</div>
+    <div class="card">
+      <h3>Psychology</h3>
+      <p>Understand behavior, thinking patterns and human nature.</p>
+    </div>
 
-<div class="topic">
-<div class="topic-icon">🏛️</div>
-<h3>Stoicism</h3>
-<p>Ancient principles for modern challenges.</p>
-</div>
+    <div class="card">
+      <h3>Stoicism</h3>
+      <p>Ancient principles for modern resilience and discipline.</p>
+    </div>
 
-<div class="topic">
-<div class="topic-icon">⚡</div>
-<h3>Discipline</h3>
-<p>Habits, consistency, focus and self-control.</p>
-</div>
+    <div class="card">
+      <h3>Discipline</h3>
+      <p>Build habits, focus and consistency.</p>
+    </div>
 
-<div class="topic">
-<div class="topic-icon">💰</div>
-<h3>Money</h3>
-<p>Financial education, behavior and decision-making.</p>
-</div>
+    <div class="card">
+      <h3>Money</h3>
+      <p>Learn smarter financial habits and decision-making.</p>
+    </div>
 
-<div class="topic">
-<div class="topic-icon">🤖</div>
-<h3>AI & Technology</h3>
-<p>Tools and ideas changing how we work and create.</p>
-</div>
+    <div class="card">
+      <h3>AI & Technology</h3>
+      <p>Understand powerful tools changing the way we work.</p>
+    </div>
 
-<div class="topic">
-<div class="topic-icon">👥</div>
-<h3>Human Behavior</h3>
-<p>Social dynamics, influence and communication.</p>
-</div>
+    <div class="card">
+      <h3>Human Behavior</h3>
+      <p>Explore persuasion, attention and social intelligence.</p>
+    </div>
 
-<div class="topic">
-<div class="topic-icon">🎯</div>
-<h3>Productivity</h3>
-<p>Attention, systems, work and meaningful output.</p>
-</div>
-
-<div class="topic">
-<div class="topic-icon">🔎</div>
-<h3>Critical Thinking</h3>
-<p>Better questions, clearer reasoning and mental models.</p>
-</div>
-
-</div>
-
-</div>
+  </div>
 
 </section>
 
 
-<!-- =========================
-     CONTENT
-========================= -->
+<!-- CREATOR STUDIO -->
 
-<section id="content">
+<section id="studio">
 
-<div class="container">
+  <h2 class="section-title">
+    Creator Studio
+  </h2>
 
-<div class="section-head">
-<div class="kicker">Content</div>
-<h2>Short ideas.<br>Deep impact.</h2>
-<p>
-The Inner Edge publishes educational videos and short-form
-content designed to turn complex ideas into memorable stories.
-</p>
-</div>
+  <p class="section-text">
+    Turn an idea into a complete short-form content package.
+  </p>
 
-<div class="content-grid">
+  <div class="studio">
 
-<div class="feature">
+    <div class="studio-header">
 
-<div class="feature-label">Featured concept</div>
+      <strong>The Inner Edge Studio</strong>
 
-<h3>Your attention is one of your most valuable assets.</h3>
+      <span class="status">
+        ● Ready
+      </span>
 
-<p>
-In a world engineered to capture attention, understanding
-how distraction works is the first step toward controlling it.
-</p>
+    </div>
 
-<br>
+    <div class="studio-body">
 
-<a href="#studio" class="btn btn-primary">
-Create a Short →
-</a>
+      <!-- INPUT -->
 
-</div>
+      <div class="panel">
 
-<div class="content-side">
+        <h2>Build Content</h2>
 
-<div class="content-card">
-<h3>Long-form</h3>
-<p>
-Deep dives into psychology, philosophy, technology,
-money and human behavior.
-</p>
-</div>
+        <label for="topic">
+          Topic
+        </label>
 
-<div class="content-card">
-<h3>Short-form</h3>
-<p>
-Fast, cinematic educational ideas built for modern
-short-form platforms.
-</p>
-</div>
+        <input
+          id="topic"
+          type="text"
+          placeholder="Example: 5 Excel tricks that save hours"
+        >
 
-<div class="content-card">
-<h3>Educational posts</h3>
-<p>
-Frameworks, mental models and practical ideas you
-can revisit anytime.
-</p>
-</div>
+        <label for="format">
+          Format
+        </label>
 
-</div>
+        <select id="format">
 
-</div>
+          <option value="Short-form video">
+            Short-form video
+          </option>
 
-</div>
+          <option value="YouTube video">
+            YouTube video
+          </option>
 
-</section>
+          <option value="Instagram Reel">
+            Instagram Reel
+          </option>
 
+          <option value="TikTok">
+            TikTok
+          </option>
 
-<!-- =========================
-     CREATOR STUDIO
-========================= -->
+        </select>
 
-<section id="studio" class="studio">
+        <label for="style">
+          Style
+        </label>
 
-<div class="container">
+        <select id="style">
 
-<div class="section-head">
+          <option value="Cinematic">
+            Cinematic
+          </option>
 
-<div class="kicker">Creator Studio</div>
+          <option value="Educational">
+            Educational
+          </option>
 
-<h2>From idea<br>to published content.</h2>
+          <option value="Storytelling">
+            Storytelling
+          </option>
 
-<p>
-The Inner Edge is designed around a simple content workflow:
-develop an idea, prepare the content, review it, then publish
-through supported platforms.
-</p>
+          <option value="Fast-paced">
+            Fast-paced
+          </option>
 
-</div>
+        </select>
 
-<div class="studio-shell">
+        <button
+          class="button generate"
+          onclick="generateContent()"
+        >
+          Generate Content
+        </button>
 
-<div class="studio-top">
+        <div id="loading" class="loading">
+          Building your content package...
+        </div>
 
-<div class="studio-brand">
-The Inner Edge Studio
-</div>
-
-<div class="status">
-● Concept mode
-</div>
-
-</div>
-
-<div class="studio-body">
-
-<div class="studio-grid">
-
-<div class="studio-panel">
-
-<h3>Build a content idea</h3>
-
-<label for="topic">Topic</label>
-
-<input
-id="topic"
-type="text"
-placeholder="e.g. Why your brain loves distraction"
-/>
-
-<label for="format">Format</label>
-
-<select id="format">
-<option>Short-form video</option>
-<option>Long-form video</option>
-<option>Educational post</option>
-</select>
-
-<label for="tone">Style</label>
-
-<select id="tone">
-<option>Cinematic</option>
-<option>Educational</option>
-<option>Story-driven</option>
-<option>Minimal</option>
-</select>
-
-<button class="btn btn-primary" onclick="generateIdea()">
-Generate Concept
-</button>
-
-</div>
+      </div>
 
 
-<div class="studio-panel">
+      <!-- OUTPUT -->
 
-<h3>Preview</h3>
+      <div class="panel">
 
-<div class="preview">
+        <h2>Generated Content</h2>
 
-<div id="previewText" class="preview-text">
-Your content preview will appear here.
-</div>
+        <div id="empty">
 
-</div>
+          <p class="section-text">
+            Enter a topic and click
+            <strong>Generate Content</strong>.
+          </p>
 
-</div>
+        </div>
 
-</div>
+        <div id="output" class="output">
 
-</div>
+          <h3>Title</h3>
+          <div id="title" class="output-box"></div>
 
-</div>
+          <h3>Hook</h3>
+          <div id="hook" class="output-box"></div>
 
-</div>
+          <h3>Script</h3>
+          <div id="script" class="output-box"></div>
+
+          <h3>Caption</h3>
+          <div id="caption" class="output-box"></div>
+
+          <h3>Hashtags</h3>
+          <div id="hashtags" class="output-box"></div>
+
+          <h3>Scene Plan</h3>
+          <div id="scenes" class="output-box"></div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
 
 </section>
 
 
-<!-- =========================
-     WORKFLOW
-========================= -->
+<!-- WORKFLOW -->
 
-<section>
+<section id="workflow">
 
-<div class="container">
+  <h2 class="section-title">
+    From idea to publish
+  </h2>
 
-<div class="section-head">
+  <div class="workflow">
 
-<div class="kicker">Workflow</div>
+    <div class="step">
+      <div class="step-number">01</div>
+      <h3>Idea</h3>
+      <p>Enter your topic.</p>
+    </div>
 
-<h2>A simple publishing system.</h2>
+    <div class="step">
+      <div class="step-number">02</div>
+      <h3>Generate</h3>
+      <p>Create a title, hook, script and caption.</p>
+    </div>
 
-<p>
-The platform is structured around a transparent content workflow,
-from research through final publishing.
-</p>
+    <div class="step">
+      <div class="step-number">03</div>
+      <h3>Review</h3>
+      <p>Review your content before publishing.</p>
+    </div>
 
-</div>
+    <div class="step">
+      <div class="step-number">04</div>
+      <h3>Publish</h3>
+      <p>Connect supported platforms when approved.</p>
+    </div>
 
-<div class="process-grid">
-
-<div class="process">
-<div class="process-number">01 / DISCOVER</div>
-<h3>Research</h3>
-<p>
-Explore a topic and identify useful facts,
-ideas and supporting sources.
-</p>
-</div>
-
-<div class="process">
-<div class="process-number">02 / CREATE</div>
-<h3>Produce</h3>
-<p>
-Turn the idea into a script, visual concept,
-caption and finished media.
-</p>
-</div>
-
-<div class="process">
-<div class="process-number">03 / REVIEW</div>
-<h3>Review</h3>
-<p>
-Check the final content before it is shared
-through a supported publishing workflow.
-</p>
-</div>
-
-<div class="process">
-<div class="process-number">04 / PUBLISH</div>
-<h3>Share</h3>
-<p>
-Connect supported platforms and publish content
-using their authorized APIs and workflows.
-</p>
-</div>
-
-</div>
-
-</div>
+  </div>
 
 </section>
 
 
-<!-- =========================
-     TIKTOK INTEGRATION
-========================= -->
-
-<section>
-
-<div class="container">
-
-<div class="about-grid">
-
-<div class="about-card">
-
-<div class="kicker">Platform integration</div>
-
-<h3>Built for modern creators.</h3>
-
-<p>
-The Inner Edge's publishing architecture is designed
-to work with authorized platform integrations. Where
-available, creators can prepare content, review it and
-send it through the platform's official publishing flow.
-</p>
-
-<br>
-
-<p>
-Platform access depends on the relevant developer
-authorization, approved scopes and platform policies.
-</p>
-
-</div>
-
-
-<div class="about-card">
-
-<div class="kicker">TikTok workflow</div>
-
-<h3>Create → Review → Publish</h3>
-
-<p>
-For supported TikTok integrations, the intended experience
-is to prepare content inside the creator workflow and then
-send it to TikTok using an authorized connection.
-</p>
-
-<br>
-
-<p>
-The website does not claim that TikTok publishing is
-enabled until the required developer integration,
-authorization and review have been completed.
-</p>
-
-</div>
-
-</div>
-
-</div>
-
-</section>
-
-
-<!-- =========================
-     FAQ
-========================= -->
-
-<section id="faq">
-
-<div class="container">
-
-<div class="section-head">
-
-<div class="kicker">FAQ</div>
-
-<h2>Frequently asked questions.</h2>
-
-</div>
-
-<div class="faq">
-
-<details>
-<summary>What is The Inner Edge?</summary>
-<p>
-The Inner Edge is an educational media brand exploring
-psychology, self-improvement, Stoicism, discipline,
-money, AI, technology, productivity and human behavior.
-</p>
-</details>
-
-<details>
-<summary>Is the content financial or medical advice?</summary>
-<p>
-No. The content is intended for general educational and
-informational purposes and should not replace professional
-medical, financial, legal or other professional advice.
-</p>
-</details>
-
-<details>
-<summary>Does The Inner Edge use AI?</summary>
-<p>
-AI may be used as a production and research tool.
-Human review remains part of the intended content workflow.
-</p>
-</details>
-
-<details>
-<summary>Can creators publish to TikTok?</summary>
-<p>
-Where an approved TikTok integration is available,
-authorized users may use supported Content Posting API
-workflows. Availability depends on TikTok approval,
-authorization and applicable platform requirements.
-</p>
-</details>
-
-<details>
-<summary>Is The Inner Edge affiliated with TikTok?</summary>
-<p>
-No. The Inner Edge is an independent brand and is not
-owned, sponsored or endorsed by TikTok.
-</p>
-</details>
-
-</div>
-
-</div>
-
-</section>
-
-
-<!-- =========================
-     CONTACT
-========================= -->
+<!-- CONTACT -->
 
 <section id="contact">
 
-<div class="container">
+  <h2 class="section-title">
+    Contact
+  </h2>
 
-<div class="contact-box">
-
-<div class="kicker">Get in touch</div>
-
-<h2>Ideas start with a question.</h2>
-
-<p>
-For collaboration, business inquiries, content questions
-or platform-related matters, connect with The Inner Edge
-through our official channels.
-</p>
-
-<div class="hero-buttons">
-
-<a
-href="https://www.youtube.com/"
-target="_blank"
-rel="noopener"
-class="btn btn-primary">
-YouTube
-</a>
-
-<a
-href="https://www.tiktok.com/"
-target="_blank"
-rel="noopener"
-class="btn btn-secondary">
-TikTok
-</a>
-
-</div>
-
-</div>
-
-</div>
+  <p class="section-text">
+    The Inner Edge is an educational media project exploring
+    psychology, technology, money and human potential.
+  </p>
 
 </section>
 
-</main>
-
-
-<!-- =========================
-     FOOTER
-========================= -->
 
 <footer>
 
-<div class="container footer-inner">
+  <p>
+    © 2026 The Inner Edge
+  </p>
 
-<div class="footer-copy">
-
-<strong>The Inner Edge</strong><br>
-
-© 2026 The Inner Edge. All rights reserved.
-
-</div>
-
-<div class="footer-links">
-
-<a href="index.html">Home</a>
-
-<a href="#about">About</a>
-
-<a href="#topics">Topics</a>
-
-<a href="#studio">Studio</a>
-
-<a href="#contact">Contact</a>
-
-<a href="privacy.html">Privacy Policy</a>
-
-<a href="terms.html">Terms of Service</a>
-
-</div>
-
-</div>
+  <p>
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="terms.html">Terms of Service</a>
+  </p>
 
 </footer>
 
 
 <script>
 
-/* =========================
-   CREATOR STUDIO DEMO
-========================= */
+/*
+  THE INNER EDGE CONTENT ENGINE
 
-function generateIdea() {
+  This version generates a complete structured content package
+  directly in the browser.
 
-  const topicInput = document.getElementById("topic");
-  const preview = document.getElementById("previewText");
+  No API key is stored here.
+*/
+
+function generateContent() {
 
   const topic =
-    topicInput.value.trim() ||
-    "Why your brain loves distraction";
+    document.getElementById("topic").value.trim();
 
-  preview.innerHTML =
-    "THE INNER EDGE<br><br>" +
-    topic +
-    "<br><br>" +
-    "<span style='font-size:14px;color:#9a9da8;'>Cinematic short-form concept</span>";
+  const format =
+    document.getElementById("format").value;
+
+  const style =
+    document.getElementById("style").value;
+
+  if (!topic) {
+
+    alert("Please enter a topic first.");
+
+    return;
+  }
+
+  document.getElementById("empty").style.display = "none";
+
+  document.getElementById("output").style.display = "none";
+
+  document.getElementById("loading").style.display = "block";
+
+
+  setTimeout(function() {
+
+    const cleanTopic =
+      topic.charAt(0).toUpperCase() +
+      topic.slice(1);
+
+
+    const title =
+      createTitle(cleanTopic);
+
+
+    const hook =
+      createHook(cleanTopic);
+
+
+    const script =
+      createScript(cleanTopic, format, style);
+
+
+    const caption =
+      createCaption(cleanTopic);
+
+
+    const hashtags =
+      createHashtags(cleanTopic);
+
+
+    const scenes =
+      createScenes(cleanTopic, style);
+
+
+    document.getElementById("title").textContent =
+      title;
+
+    document.getElementById("hook").textContent =
+      hook;
+
+    document.getElementById("script").textContent =
+      script;
+
+    document.getElementById("caption").textContent =
+      caption;
+
+    document.getElementById("hashtags").textContent =
+      hashtags;
+
+    document.getElementById("scenes").textContent =
+      scenes;
+
+
+    document.getElementById("loading").style.display =
+      "none";
+
+    document.getElementById("output").style.display =
+      "block";
+
+
+  }, 700);
+
 }
 
-/* =========================
-   SIMPLE SCROLL EFFECT
-========================= */
 
-const observer = new IntersectionObserver(
-  entries => {
-    entries.forEach(entry => {
+/* TITLE */
 
-      if (entry.isIntersecting) {
-        entry.target.style.opacity = "1";
-        entry.target.style.transform = "translateY(0)";
-      }
+function createTitle(topic) {
 
-    });
-  },
-  { threshold: 0.08 }
-);
+  return "The Truth About " + topic;
 
-document
-  .querySelectorAll(".topic, .process, .content-card, .about-card")
-  .forEach(el => {
+}
 
-    el.style.opacity = "0";
-    el.style.transform = "translateY(15px)";
-    el.style.transition = "opacity .6s ease, transform .6s ease";
 
-    observer.observe(el);
+/* HOOK */
 
-  });
+function createHook(topic) {
+
+  return "Most people are doing " +
+    topic.toLowerCase() +
+    " the hard way. Here's what you should know.";
+
+}
+
+
+/* SCRIPT */
+
+function createScript(topic, format, style) {
+
+  return `HOOK
+
+Most people are doing ${topic.toLowerCase()} the wrong way.
+
+And the reason is simpler than you think.
+
+
+PROBLEM
+
+We often focus on complicated solutions
+when a few simple principles can create
+much better results.
+
+
+INSIGHT
+
+The first step is to understand what actually
+creates the result you want.
+
+Instead of trying to do everything at once,
+focus on the few actions that create the
+largest improvement.
+
+
+ACTION
+
+Start with one small change today.
+
+Test it.
+
+Measure the result.
+
+Then improve it.
+
+Small improvements compound over time.
+
+
+ENDING
+
+The goal isn't to become perfect.
+
+The goal is to become better than you were yesterday.
+
+This is The Inner Edge.
+
+Master your mind. Master your life.`;
+
+}
+
+
+/* CAPTION */
+
+function createCaption(topic) {
+
+  return "A deeper look at " +
+    topic.toLowerCase() +
+    ". Save this and try it today. " +
+    "Follow The Inner Edge for more.";
+
+}
+
+
+/* HASHTAGS */
+
+function createHashtags(topic) {
+
+  return "#TheInnerEdge #SelfImprovement #Psychology #Productivity #Mindset #Discipline #AI #Success";
+
+}
+
+
+/* SCENES */
+
+function createScenes(topic, style) {
+
+  return `Scene 1 — HOOK
+Dark cinematic opening with bold text:
+"${topic}"
+
+Scene 2 — PROBLEM
+Show the common mistake people make.
+
+Scene 3 — INSIGHT
+Use clean motion graphics to explain
+the key idea.
+
+Scene 4 — ACTION
+Show the viewer exactly what to do.
+
+Scene 5 — ENDING
+Display:
+"Master your mind. Master your life."
+
+Visual style:
+${style}`;
+
+}
 
 </script>
 
