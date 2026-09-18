@@ -2684,7 +2684,7 @@ function showToast(message){
    IDEA LAB
 ========================================================= */
 
-function generateIdeas(){
+async function generateIdeas() {
 
     const category =
         document.getElementById("ideaCategory").value;
@@ -2705,15 +2705,115 @@ function generateIdeas(){
     const status =
         document.getElementById("ideaStatus");
 
-    status.textContent = "Generating...";
+    status.textContent = "Generating with Gemini...";
 
     results.innerHTML = `
         <div style="text-align:center;padding:60px;color:var(--muted);">
             <div style="font-size:30px;margin-bottom:10px;">✦</div>
-            Building concepts...
+            Gemini is creating your ideas...
         </div>
     `;
 
+    const prompt = `
+You are the AI Idea Director for The Inner Edge.
+
+Brand:
+The Inner Edge — Master your mind. Master your life.
+
+Create 5 original short-form content ideas.
+
+Category: ${category}
+Topic: ${topic}
+Format: ${format}
+Style: ${style}
+
+Target audience:
+18–35 year olds interested in psychology,
+self-improvement, Stoicism, AI, money,
+productivity, human behavior and curiosity.
+
+For each idea provide:
+
+1. Title
+2. Hook
+3. Core Idea
+4. Why People Will Care
+
+Requirements:
+- Original and specific
+- Strong curiosity-driven hooks
+- Educational and practical
+- Suitable for TikTok, YouTube Shorts and Instagram Reels
+- Avoid generic motivational clichés
+- Clear, engaging language
+`;
+
+    try {
+
+        const response = await fetch(
+            "https://the-inner-edge.vercel.app/api/generate",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    prompt: prompt
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error || "AI request failed"
+            );
+        }
+
+        const text =
+            data.text || "No ideas were generated.";
+
+        results.innerHTML = "";
+
+        const wrapper = document.createElement("div");
+        wrapper.style.padding = "30px";
+
+        const heading = document.createElement("div");
+        heading.textContent = "✦ GEMINI AI IDEAS";
+        heading.style.fontSize = "14px";
+        heading.style.color = "var(--gold)";
+        heading.style.marginBottom = "15px";
+
+        const content = document.createElement("div");
+        content.textContent = text;
+        content.style.whiteSpace = "pre-wrap";
+        content.style.lineHeight = "1.7";
+        content.style.color = "var(--text)";
+
+        wrapper.appendChild(heading);
+        wrapper.appendChild(content);
+
+        results.appendChild(wrapper);
+
+        status.textContent =
+            "AI ideas generated successfully";
+
+    } catch (error) {
+
+        console.error("Idea generation error:", error);
+
+        status.textContent = "Generation failed";
+
+        results.innerHTML = `
+            <div style="padding:30px;color:var(--red);">
+                <strong>AI generation failed.</strong>
+                <br><br>
+                Please try again.
+            </div>
+        `;
+    }
+}
     setTimeout(()=>{
 
         const ideas = [
