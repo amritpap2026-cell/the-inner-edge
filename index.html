@@ -2680,6 +2680,47 @@ function showToast(message){
 
 
 /* =========================================================
+   SHARED AI BACKEND
+========================================================= */
+
+const AI_ENDPOINT = "https://the-inner-edge.vercel.app/api/generate";
+
+async function callAI(prompt){
+
+    const response = await fetch(AI_ENDPOINT, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ prompt: prompt })
+    });
+
+    let data = null;
+    try {
+        data = await response.json();
+    } catch (parseError) {
+        throw new Error("Invalid response from AI backend.");
+    }
+
+    if (!response.ok) {
+        throw new Error(
+            (data && data.error) ? data.error : "AI request failed"
+        );
+    }
+
+    const text = (data && typeof data.text === "string")
+        ? data.text
+        : "";
+
+    if (!text.trim()) {
+        throw new Error("AI returned an empty response.");
+    }
+
+    return text;
+}
+
+
+/* =========================================================
    IDEA LAB  (Gemini backend via Vercel)
 ========================================================= */
 
@@ -2744,26 +2785,7 @@ Do not use generic motivational clichés.
 
     try {
 
-        const response = await fetch(
-            "https://the-inner-edge.vercel.app/api/generate",
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    prompt: prompt
-                })
-            }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(
-                data.error || "AI request failed"
-            );
-        }
+        const text = await callAI(prompt);
 
         results.innerHTML = `
             <div style="padding:30px;">
@@ -2776,7 +2798,7 @@ Do not use generic motivational clichés.
                     line-height:1.7;
                     color:var(--text);
                 ">
-                    ${escapeHtml(data.text || "No ideas generated.")}
+                    ${escapeHtml(text)}
                 </div>
             </div>
         `;
@@ -2837,38 +2859,24 @@ function useIdea(index,title){
 
 
 /* =========================================================
-   SCRIPT GENERATOR
+   SCRIPT STUDIO — AI SCRIPT GENERATOR
 ========================================================= */
 
-function generateScript(){
+async function generateScript(){
 
     const topic =
-        document.getElementById("scriptTopic")
-        .value.trim()
+        (document.getElementById("scriptTopic").value || "").trim()
         || "Your Brain Is Addicted to Distraction";
 
     const angle =
-        document.getElementById("scriptAngle")
-        .value.trim()
+        (document.getElementById("scriptAngle").value || "").trim()
         || "A surprising lesson about human behavior.";
 
     const format =
         document.getElementById("scriptFormat").value;
 
-    const title =
-        document.getElementById("scriptTitle");
-
-    const hook =
-        document.getElementById("scriptHook");
-
-    const body =
-        document.getElementById("scriptBody");
-
-    const caption =
-        document.getElementById("scriptCaption");
-
-    const hashtags =
-        document.getElementById("scriptHashtags");
+    const style =
+        document.getElementById("scriptStyle").value;
 
     const projectName =
         document.getElementById("scriptProjectName");
@@ -2877,57 +2885,227 @@ function generateScript(){
         document.getElementById("scriptStatus");
 
     projectName.textContent = topic;
-
     status.textContent = "Generating...";
 
-    title.textContent = topic;
+    const prompt = `
+You are the Script Director for "The Inner Edge" — Master your mind. Master your life.
 
-    hook.textContent =
-        `"Most people think they understand ${topic}. But there is a deeper reason this matters."`;
+Create a high-quality short-form educational script.
 
-    body.textContent =
+Topic: ${topic}
+Core Angle: ${angle}
+Format: ${format}
+Style: ${style}
 
-`Most people look at ${topic} as a simple problem.
+Brand voice:
+Cinematic, intelligent, concise, engaging, and educational.
+Avoid generic motivational clichés.
+Target audience: 18–35 year olds interested in useful, curiosity-driven
+content about psychology, human behavior, self-improvement, discipline,
+Stoicism, AI, technology, money, productivity, history, health, science,
+and human potential.
 
-But the interesting part is what happens underneath.
+The script must be suitable for TikTok, YouTube Shorts, and Instagram Reels.
 
-${angle}
+Return ONLY a single valid JSON object. No markdown, no code fences,
+no commentary, no trailing text. Use this exact shape:
 
-Your environment shapes what gets your attention.
+{
+  "title": "string",
+  "hook": "string",
+  "script": "string with paragraphs separated by \\n\\n",
+  "callToAction": "string",
+  "caption": "string",
+  "hashtags": "string of space-separated hashtags starting with #",
+  "scenes": [
+    {
+      "time": "0:00-0:04",
+      "title": "short scene title",
+      "visual": "short visual description",
+      "type": "CINEMATIC"
+    }
+  ]
+}
 
-Your habits shape what you repeat.
+Rules:
+- 4 to 6 scenes total.
+- Each scene "type" is one short uppercase word like CINEMATIC, B-ROLL, AI VISUAL, STORY, or TEXT.
+- Script should be roughly 30–60 seconds when read aloud.
+- Hook must grab attention in the first 3 seconds.
+- All string values must be plain text (no HTML).
+- Output must be parseable by JSON.parse().
+`;
 
-And what you repeatedly do eventually shapes the person you become.
+    try {
 
-The useful question isn't simply:
+        const rawText = await callAI(prompt);
 
-"How do I stop?"
+        const parsed = parseAIScript(rawText);
 
-A better question is:
+        const titleEl =
+            document.getElementById("scriptTitle");
 
-"What system is making this behavior easy?"
+        const hookEl =
+            document.getElementById("scriptHook");
 
-Change the system.
+        const bodyEl =
+            document.getElementById("scriptBody");
 
-Make the better behavior easier.
+        const captionEl =
+            document.getElementById("scriptCaption");
 
-And give your attention somewhere worth going.`;
+        const hashtagsEl =
+            document.getElementById("scriptHashtags");
 
-    caption.textContent =
+        titleEl.textContent =
+            parsed.title || topic;
 
-`${topic} is more than a surface-level problem.
+        hookEl.textContent =
+            parsed.hook || "";
 
-Understand the system behind the behavior — and you can start changing it.
+        const scriptWithCTA =
+            parsed.callToAction
+                ? (parsed.script + "\n\n" + parsed.callToAction).trim()
+                : parsed.script;
 
-Think deeper. Live stronger.`;
+        bodyEl.textContent =
+            scriptWithCTA || rawText;
 
-    hashtags.textContent =
-        "#psychology #selfimprovement #mindset #discipline #productivity #theinneredge";
+        captionEl.textContent =
+            parsed.caption || "";
 
-    status.textContent = format;
+        hashtagsEl.textContent =
+            parsed.hashtags || "";
 
-    showToast("Script workspace updated.");
+        renderScenes(parsed.scenes);
 
+        status.textContent = "Ready";
+        showToast("AI script generated.");
+
+    } catch (error) {
+
+        console.error(error);
+
+        status.textContent = "Failed";
+
+        showToast("Script generation failed. Please try again.");
+    }
+}
+
+
+function parseAIScript(rawText){
+
+    const empty = {
+        title: "",
+        hook: "",
+        script: "",
+        callToAction: "",
+        caption: "",
+        hashtags: "",
+        scenes: []
+    };
+
+    if (!rawText) return empty;
+
+    let text = String(rawText).trim();
+
+    // Strip optional markdown code fences
+    text = text
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/```\s*$/i, "")
+        .trim();
+
+    // Extract the first {...} block
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+
+    if (start !== -1 && end !== -1 && end > start) {
+
+        const candidate = text.slice(start, end + 1);
+
+        try {
+
+            const obj = JSON.parse(candidate);
+
+            const scenes = Array.isArray(obj.scenes)
+                ? obj.scenes
+                    .filter(Boolean)
+                    .map(s => ({
+                        time: String(s.time || "").trim(),
+                        title: String(s.title || "").trim(),
+                        visual: String(s.visual || "").trim(),
+                        type: String(s.type || "").trim()
+                    }))
+                : [];
+
+            return {
+                title: String(obj.title || "").trim(),
+                hook: String(obj.hook || "").trim(),
+                script: String(obj.script || "").trim(),
+                callToAction: String(obj.callToAction || obj.cta || "").trim(),
+                caption: String(obj.caption || "").trim(),
+                hashtags: String(obj.hashtags || "").trim(),
+                scenes: scenes
+            };
+
+        } catch (parseError) {
+            console.warn("Script JSON parse failed, using fallback.", parseError);
+        }
+    }
+
+    // Fallback — put raw text into the script body
+    return Object.assign({}, empty, {
+        title: "AI Script",
+        script: text
+    });
+}
+
+
+function renderScenes(scenes){
+
+    const container =
+        document.getElementById("scenePlan");
+
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (!Array.isArray(scenes) || scenes.length === 0) {
+        return;
+    }
+
+    scenes.forEach(scene => {
+
+        const row = document.createElement("div");
+        row.className = "scene";
+
+        const timeEl = document.createElement("div");
+        timeEl.className = "scene-time";
+        timeEl.textContent = scene.time || "";
+
+        const middleEl = document.createElement("div");
+
+        const titleEl = document.createElement("div");
+        titleEl.className = "scene-title";
+        titleEl.textContent = scene.title || "";
+
+        const visualEl = document.createElement("div");
+        visualEl.className = "scene-visual";
+        visualEl.textContent = scene.visual || "";
+
+        middleEl.appendChild(titleEl);
+        middleEl.appendChild(visualEl);
+
+        const typeEl = document.createElement("div");
+        typeEl.className = "scene-type";
+        typeEl.textContent = (scene.type || "").toUpperCase();
+
+        row.appendChild(timeEl);
+        row.appendChild(middleEl);
+        row.appendChild(typeEl);
+
+        container.appendChild(row);
+    });
 }
 
 
