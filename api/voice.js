@@ -32,7 +32,7 @@ export default async function handler(req, res) {
 
     try {
         // =========================
-        // READ REQUEST BODY
+        // READ BODY
         // =========================
         let body = req.body;
 
@@ -61,13 +61,25 @@ export default async function handler(req, res) {
         body = body || {};
 
         const text = body.text;
-        const voice = body.voice || "en-US-GuyNeural";
-        const rate = body.rate || "+0%";
-        const volume = body.volume || "+0%";
-        const pitch = body.pitch || "+0Hz";
+
+        const voice =
+            body.voice ||
+            "en-US-GuyNeural";
+
+        const rate =
+            body.rate ||
+            "+0%";
+
+        const volume =
+            body.volume ||
+            "+0%";
+
+        const pitch =
+            body.pitch ||
+            "+0Hz";
 
         // =========================
-        // VALIDATE TEXT
+        // VALIDATE
         // =========================
         if (!text || typeof text !== "string") {
             return res.status(400).json({
@@ -84,10 +96,11 @@ export default async function handler(req, res) {
             });
         }
 
-        console.log("Voice request received:", {
+        console.log("Voice request:", {
             characters: text.length,
             voice,
             rate,
+            volume,
             pitch
         });
 
@@ -95,100 +108,165 @@ export default async function handler(req, res) {
         // LOAD EDGE TTS
         // =========================
         const {
-            EdgeTTS,
-            createSRT
+            Communicate,
+            SubMaker
         } = await import("@travisvn/edge-tts");
 
         // =========================
-        // CREATE TTS ENGINE
+        // CREATE STREAMING TTS
         // =========================
-        const tts = new EdgeTTS(
-            text,
+        const communicate = new Communicate(text, {
             voice,
-            {
-                rate,
-                volume,
-                pitch
-            }
-        );
+            rate,
+            volume,
+            pitch,
 
-        // =========================
-        // TIMEOUT PROTECTION
-        // =========================
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => {
-                reject(
-                    new Error(
-                        "Voice generation timed out after 45 seconds."
-                    )
-                );
-            }, 45000);
+            // Fail the connection instead of hanging
+            // for several minutes.
+            connectionTimeout: 10000
         });
 
-        const synthesisPromise = tts.synthesize();
+        const subMaker = new SubMaker();
 
-        const result = await Promise.race([
-            synthesisPromise,
-            timeoutPromise
-        ]);
+        const audioChunks = [];
+
+        let audioBytes = 0;
+        let wordCount = 0;
 
         // =========================
-        // CONVERT AUDIO
+        // HARD SERVER TIMEOUT
         // =========================
-        const audioBuffer = Buffer.from(
-            await result.audio.arrayBuffer()
-        );
+        const startTime = Date.now();
 
-        if (!audioBuffer.length) {
-            throw new Error("Generated audio is empty.");
+        const MAX_TIME = 40000;
+
+        for await (const chunk of communicate.stream()) {
+
+            // Stop if generation takes too long.
+            if (Date.now() - startTime > MAX_TIME) {
+                throw new Error(
+                    "Voice generation timed out after 40 seconds."
+                );
+            }
+
+            // Audio chunk
+            if (
+                chunk.type === "audio" &&
+                chunk.data
+            ) {
+                audioChunks.push(chunk.data);
+
+                audioBytes += chunk.data.length;
+            }
+
+            // Word timing
+            else if (
+                chunk.type === "WordBoundary"
+            ) {
+                subMaker.feed(chunk);
+
+                wordCount++;
+            }
         }
 
-        const audioBase64 = audioBuffer.toString("base64");
+        // =========================
+        // CHECK AUDIO
+        // =========================
+        if (
+            audioChunks.length === 0 ||
+            audioBytes === 0
+        ) {
+            throw new Error(
+                "No audio was received from Edge TTS."
+            );
+        }
+
+        // =========================
+        // COMBINE MP3
+        // =========================
+        const audioBuffer =
+            Buffer.concat(audioChunks);
+
+        const audioBase64 =
+            audioBuffer.toString("base64");
 
         // =========================
         // CREATE SRT
         // =========================
-        const srt = createSRT(result.subtitle);
+        const srt =
+            subMaker.getSrt();
 
-        console.log("Voice generation successful:", {
-            audioBytes: audioBuffer.length,
-            subtitleWords: result.subtitle?.length || 0
-        });
+        console.log(
+            "Voice generation successful:",
+            {
+                audioBytes,
+                chunks: audioChunks.length,
+                words: wordCount
+            }
+        );
 
         // =========================
-        // RESPONSE
+        // RETURN RESULT
         // =========================
         return res.status(200).json({
             ok: true,
+
             engine: "Edge TTS",
+
             voice,
+
             audio: audioBase64,
-            audioMimeType: "audio/mpeg",
+
+            audioMimeType:
+                "audio/mpeg",
+
             subtitles: srt,
+
             subtitleFormat: "srt",
-            size: audioBuffer.length
+
+            size: audioBuffer.length,
+
+            chunks:
+                audioChunks.length,
+
+            words:
+                wordCount
         });
 
     } catch (error) {
-        console.error("Voice generation error:", error);
+
+        console.error(
+            "Voice generation error:",
+            error
+        );
 
         const message =
             error?.message ||
             "Unknown voice generation error";
 
         // Timeout
-        if (message.includes("timed out")) {
+        if (
+            message
+                .toLowerCase()
+                .includes("timeout")
+            ||
+            message
+                .toLowerCase()
+                .includes("timed out")
+        ) {
             return res.status(504).json({
                 ok: false,
-                error: "Voice generation timed out",
+                error:
+                    "Voice generation timed out",
                 details: message
             });
         }
 
-        // Other errors
-        return res.status(500).json({
+        // TTS connection error
+        return res.status(502).json({
             ok: false,
-            error: "Voice generation failed",
+            error:
+                "Edge TTS connection failed",
             details: message
         });
     }
