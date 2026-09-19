@@ -1099,6 +1099,136 @@ a{
     }
 }
 
+
+/* =========================
+   VOICE GENERATOR
+========================= */
+
+.voice-generator{
+    margin-top:16px;
+}
+
+.voice-generator-grid{
+    display:grid;
+    grid-template-columns:320px 1fr;
+    gap:16px;
+    align-items:start;
+}
+
+.voice-control-card{
+    border:1px solid var(--border);
+    background:rgba(255,255,255,.025);
+    border-radius:16px;
+    padding:18px;
+}
+
+.voice-control-card h4{
+    font-size:13px;
+    margin-bottom:5px;
+}
+
+.voice-control-card p{
+    color:var(--muted);
+    font-size:10px;
+    line-height:1.55;
+    margin-bottom:16px;
+}
+
+.voice-output-card{
+    border:1px solid var(--border);
+    background:rgba(0,0,0,.12);
+    border-radius:16px;
+    padding:18px;
+}
+
+.voice-status-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:14px;
+}
+
+.voice-status-label{
+    color:var(--muted2);
+    font-size:9px;
+    text-transform:uppercase;
+    letter-spacing:.13em;
+}
+
+.voice-audio{
+    width:100%;
+    margin:8px 0 14px;
+}
+
+.voice-meta{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    margin-bottom:14px;
+}
+
+.voice-meta-item{
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px;
+    background:rgba(255,255,255,.018);
+}
+
+.voice-meta-label{
+    color:var(--muted2);
+    font-size:8px;
+    text-transform:uppercase;
+    letter-spacing:.1em;
+}
+
+.voice-meta-value{
+    font-size:11px;
+    font-weight:800;
+    margin-top:4px;
+    word-break:break-word;
+}
+
+.voice-subtitles{
+    max-height:240px;
+    overflow:auto;
+    white-space:pre-wrap;
+    border:1px solid var(--border);
+    border-radius:11px;
+    background:#090b0f;
+    color:var(--muted);
+    padding:13px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:10px;
+    line-height:1.6;
+}
+
+.voice-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:12px;
+}
+
+.voice-note{
+    color:var(--muted2);
+    font-size:9px;
+    line-height:1.5;
+    margin-top:10px;
+}
+
+@media(max-width:900px){
+    .voice-generator-grid{
+        grid-template-columns:1fr;
+    }
+}
+
+@media(max-width:500px){
+    .voice-meta{
+        grid-template-columns:1fr;
+    }
+}
+
 /* =========================
    MOBILE
 ========================= */
@@ -1305,8 +1435,8 @@ a{
         </div>
 
         <div style="padding:8px 12px;color:#555d6c;font-size:9px;line-height:1.5;">
-            Phase 1 interface<br>
-            AI backend connection comes next.
+            Phase 2 AI studio<br>
+            Gemini + voice backend online.
         </div>
 
     </div>
@@ -2116,7 +2246,7 @@ It's fewer interruptions.
             <div style="margin-top:16px;display:flex;flex-direction:column;gap:9px;">
                 <div class="recent-item"><div><div class="recent-title">01 · Script</div><div class="recent-meta">AI script from Script Studio</div></div><span class="pill ready">Ready</span></div>
                 <div class="recent-item"><div><div class="recent-title">02 · Production Plan</div><div class="recent-meta">Scene, voice, visual and caption instructions</div></div><span class="pill ready" id="pipelinePlanStatus">Ready</span></div>
-                <div class="recent-item"><div><div class="recent-title">03 · Voice</div><div class="recent-meta">Narration generation</div></div><span class="pill draft">Next</span></div>
+                <div class="recent-item"><div><div class="recent-title">03 · Voice</div><div class="recent-meta">Narration generation</div></div><span class="pill draft" id="pipelineVoiceStatus">Next</span></div>
                 <div class="recent-item"><div><div class="recent-title">04 · Visuals</div><div class="recent-meta">AI / licensed stock selection</div></div><span class="pill draft">Next</span></div>
                 <div class="recent-item"><div><div class="recent-title">05 · Render</div><div class="recent-meta">MP4 generation and captions</div></div><span class="pill draft">Next</span></div>
                 <div class="recent-item"><div><div class="recent-title">06 · Publish</div><div class="recent-meta">TikTok / YouTube / Instagram</div></div><span class="pill draft">Next</span></div>
@@ -2145,6 +2275,120 @@ It's fewer interruptions.
         <div class="output-actions" style="margin-top:16px;">
             <button class="btn" onclick="copyProductionPlan()">Copy Production Plan</button>
             <button class="btn" onclick="showPage('studio')">Back to Script</button>
+        </div>
+    </div>
+
+    <!-- VOICE GENERATOR -->
+    <div class="planner-card voice-generator">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div>
+                <h3>Voice Generator</h3>
+                <p class="card-desc">
+                    Turn the latest Script Studio narration into MP3 audio and timed SRT subtitles.
+                </p>
+            </div>
+            <span class="pill draft" id="voiceStatus">Not generated</span>
+        </div>
+
+        <div class="voice-generator-grid" style="margin-top:16px;">
+
+            <div class="voice-control-card">
+
+                <h4>Voice Settings</h4>
+                <p>
+                    Free-first narration using the secure The Inner Edge voice API.
+                    Your script stays on the server-side voice request and the browser receives the generated audio.
+                </p>
+
+                <div class="field">
+                    <label>Voice Profile</label>
+                    <select class="select" id="voiceProfile">
+                        <option value="professional-male">Professional Male</option>
+                        <option value="professional-female">Professional Female</option>
+                        <option value="calm-documentary">Calm Documentary</option>
+                        <option value="energetic-narrator">Energetic Narrator</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Speaking Rate</label>
+                    <select class="select" id="voiceRate">
+                        <option value="-8%">Slower — 8%</option>
+                        <option value="0%" selected>Natural</option>
+                        <option value="+8%">Faster — 8%</option>
+                        <option value="+12%">Fast — 12%</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Pitch</label>
+                    <select class="select" id="voicePitch">
+                        <option value="-2Hz">Lower</option>
+                        <option value="+0Hz" selected>Natural</option>
+                        <option value="+2Hz">Higher</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary generate"
+                        id="generateVoiceButton"
+                        onclick="generateVoice()">
+                    🎙 Generate Voice
+                </button>
+
+                <div class="voice-note">
+                    The voice request uses the current Script Studio text. Generate or edit the script first for the best result.
+                </div>
+
+            </div>
+
+            <div class="voice-output-card">
+
+                <div class="voice-status-row">
+                    <div>
+                        <div class="voice-status-label">Audio Preview</div>
+                        <div style="font-size:13px;font-weight:800;margin-top:4px;" id="voiceProjectName">
+                            No narration generated yet
+                        </div>
+                    </div>
+                    <span class="pill draft" id="voiceEngineStatus">Waiting</span>
+                </div>
+
+                <audio class="voice-audio" id="voiceAudio" controls preload="metadata"></audio>
+
+                <div class="voice-meta">
+                    <div class="voice-meta-item">
+                        <div class="voice-meta-label">Engine</div>
+                        <div class="voice-meta-value" id="voiceEngineValue">—</div>
+                    </div>
+                    <div class="voice-meta-item">
+                        <div class="voice-meta-label">Audio Size</div>
+                        <div class="voice-meta-value" id="voiceSizeValue">—</div>
+                    </div>
+                    <div class="voice-meta-item">
+                        <div class="voice-meta-label">Subtitles</div>
+                        <div class="voice-meta-value" id="voiceSubtitleValue">—</div>
+                    </div>
+                </div>
+
+                <div class="voice-status-label" style="margin-bottom:7px;">SRT Subtitles</div>
+
+                <div class="voice-subtitles" id="voiceSubtitles">
+                    Generate a voice track to create timed subtitles.
+                </div>
+
+                <div class="voice-actions">
+                    <button class="btn" id="downloadVoiceButton" onclick="downloadVoice()" disabled>
+                        Download MP3
+                    </button>
+                    <button class="btn" id="downloadSrtButton" onclick="downloadSRT()" disabled>
+                        Download SRT
+                    </button>
+                    <button class="btn" onclick="copySRT()">
+                        Copy SRT
+                    </button>
+                </div>
+
+            </div>
         </div>
     </div>
 
@@ -3506,6 +3750,383 @@ function copyProductionPlan(){
 
     navigator.clipboard.writeText(container.innerText)
         .then(()=>showToast("Production plan copied."))
+        .catch(()=>showToast("Copy unavailable in this browser."));
+}
+
+
+
+/* =========================================================
+   VOICE GENERATOR — EDGE TTS VIA VERCEL
+========================================================= */
+
+const VOICE_ENDPOINT = "https://the-inner-edge.vercel.app/api/voice";
+
+let latestVoiceBlob = null;
+let latestVoiceObjectUrl = "";
+let latestSRT = "";
+let latestVoiceFileName = "the-inner-edge-voice.mp3";
+
+function getVoiceProfile(){
+
+    const profile =
+        document.getElementById("voiceProfile")?.value ||
+        "professional-male";
+
+    const profiles = {
+        "professional-male": {
+            voice: "en-US-GuyNeural",
+            label: "Professional Male"
+        },
+        "professional-female": {
+            voice: "en-US-JennyNeural",
+            label: "Professional Female"
+        },
+        "calm-documentary": {
+            voice: "en-US-GuyNeural",
+            label: "Calm Documentary"
+        },
+        "energetic-narrator": {
+            voice: "en-US-GuyNeural",
+            label: "Energetic Narrator"
+        }
+    };
+
+    return profiles[profile] || profiles["professional-male"];
+}
+
+function getVoiceText(){
+
+    const data = getLatestScriptData();
+
+    let text = data.script.trim();
+
+    if (!text && data.hook) {
+        text = data.hook.trim();
+    }
+
+    return {
+        text,
+        topic: data.topic || "The Inner Edge Video"
+    };
+}
+
+function base64ToBlob(base64, mimeType){
+
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+
+    for(let i = 0; i < binary.length; i++){
+        bytes[i] = binary.charCodeAt(i);
+    }
+
+    return new Blob([bytes], {type:mimeType || "audio/mpeg"});
+}
+
+function formatBytes(bytes){
+
+    if (!Number.isFinite(bytes) || bytes <= 0) return "—";
+
+    const units = ["B","KB","MB","GB"];
+    let value = bytes;
+    let unit = 0;
+
+    while(value >= 1024 && unit < units.length - 1){
+        value /= 1024;
+        unit++;
+    }
+
+    return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
+}
+
+function countSRTEntries(srt){
+
+    if (!srt || !srt.trim()) return 0;
+
+    return srt
+        .trim()
+        .split(/\n\s*\n/)
+        .filter(Boolean)
+        .length;
+}
+
+function setVoiceStatus(text, ready=false){
+
+    const status = document.getElementById("voiceStatus");
+
+    if(!status) return;
+
+    status.textContent = text;
+    status.className = ready ? "pill ready" : "pill draft";
+}
+
+async function generateVoice(){
+
+    const data = getVoiceText();
+
+    if(!data.text){
+        showToast("Build a script first.");
+        showPage("studio");
+        return;
+    }
+
+    const profile = getVoiceProfile();
+
+    const rate =
+        document.getElementById("voiceRate")?.value || "0%";
+
+    const pitch =
+        document.getElementById("voicePitch")?.value || "+0Hz";
+
+    const button =
+        document.getElementById("generateVoiceButton");
+
+    const engineStatus =
+        document.getElementById("voiceEngineStatus");
+
+    const projectName =
+        document.getElementById("voiceProjectName");
+
+    const engineValue =
+        document.getElementById("voiceEngineValue");
+
+    const sizeValue =
+        document.getElementById("voiceSizeValue");
+
+    const subtitleValue =
+        document.getElementById("voiceSubtitleValue");
+
+    const subtitles =
+        document.getElementById("voiceSubtitles");
+
+    const pipelineVoice =
+        document.getElementById("pipelineVoiceStatus");
+
+    setVoiceStatus("Generating");
+
+    if(button){
+        button.disabled = true;
+        button.textContent = "🎙 Generating...";
+    }
+
+    if(engineStatus){
+        engineStatus.textContent = "Working";
+        engineStatus.className = "pill draft";
+    }
+
+    if(projectName){
+        projectName.textContent = data.topic;
+    }
+
+    if(engineValue) engineValue.textContent = "Edge TTS";
+    if(sizeValue) sizeValue.textContent = "Generating...";
+    if(subtitleValue) subtitleValue.textContent = "Generating...";
+    if(subtitles) subtitles.textContent = "Creating narration and timed subtitles...";
+
+    if(pipelineVoice){
+        pipelineVoice.textContent = "Working";
+        pipelineVoice.className = "pill draft";
+    }
+
+    try{
+
+        const response = await fetch(VOICE_ENDPOINT, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                text: data.text,
+                voice: profile.voice,
+                rate,
+                volume: "+0%",
+                pitch
+            })
+        });
+
+        let result = null;
+
+        try{
+            result = await response.json();
+        }catch(parseError){
+            throw new Error("Voice API returned an invalid response.");
+        }
+
+        if(!response.ok || !result?.ok){
+            const details =
+                result?.details ||
+                result?.error ||
+                `Voice request failed with status ${response.status}.`;
+
+            throw new Error(details);
+        }
+
+        if(!result.audio){
+            throw new Error("Voice API returned no audio.");
+        }
+
+        if(latestVoiceObjectUrl){
+            URL.revokeObjectURL(latestVoiceObjectUrl);
+        }
+
+        latestVoiceBlob = base64ToBlob(
+            result.audio,
+            result.audioMimeType || "audio/mpeg"
+        );
+
+        latestVoiceObjectUrl = URL.createObjectURL(latestVoiceBlob);
+
+        const audio =
+            document.getElementById("voiceAudio");
+
+        if(audio){
+            audio.src = latestVoiceObjectUrl;
+            audio.load();
+        }
+
+        latestSRT = String(result.subtitles || "");
+
+        const titleSlug =
+            String(data.topic)
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g,"-")
+                .replace(/^-+|-+$/g,"")
+                .slice(0,70) ||
+            "the-inner-edge-video";
+
+        latestVoiceFileName =
+            `${titleSlug}-voice.mp3`;
+
+        if(subtitles){
+            subtitles.textContent =
+                latestSRT ||
+                "No SRT subtitles were returned.";
+        }
+
+        if(engineValue){
+            engineValue.textContent =
+                result.engine || "Edge TTS";
+        }
+
+        if(sizeValue){
+            sizeValue.textContent =
+                formatBytes(result.size || latestVoiceBlob.size);
+        }
+
+        if(subtitleValue){
+            subtitleValue.textContent =
+                `${countSRTEntries(latestSRT)} cues`;
+        }
+
+        if(engineStatus){
+            engineStatus.textContent =
+                profile.label;
+            engineStatus.className = "pill ready";
+        }
+
+        setVoiceStatus("Ready", true);
+
+        if(pipelineVoice){
+            pipelineVoice.textContent = "Ready";
+            pipelineVoice.className = "pill ready";
+        }
+
+        document.getElementById("downloadVoiceButton").disabled = false;
+        document.getElementById("downloadSrtButton").disabled = !latestSRT;
+
+        showToast("Voice generated successfully.");
+
+    }catch(error){
+
+        console.error("Voice generation error:", error);
+
+        setVoiceStatus("Failed");
+
+        if(engineStatus){
+            engineStatus.textContent = "Error";
+            engineStatus.className = "pill draft";
+        }
+
+        if(subtitles){
+            subtitles.textContent =
+                `Voice generation failed.\n\n${error.message || "Unknown error"}`;
+        }
+
+        if(sizeValue) sizeValue.textContent = "—";
+        if(subtitleValue) subtitleValue.textContent = "—";
+
+        if(pipelineVoice){
+            pipelineVoice.textContent = "Error";
+            pipelineVoice.className = "pill draft";
+        }
+
+        showToast("Voice generation failed. Check the API deployment and try again.");
+
+    }finally{
+
+        if(button){
+            button.disabled = false;
+            button.textContent = "🎙 Generate Voice";
+        }
+    }
+}
+
+function downloadVoice(){
+
+    if(!latestVoiceBlob){
+        showToast("Generate a voice track first.");
+        return;
+    }
+
+    const url = URL.createObjectURL(latestVoiceBlob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = latestVoiceFileName;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+
+    showToast("MP3 download started.");
+}
+
+function downloadSRT(){
+
+    if(!latestSRT.trim()){
+        showToast("Generate subtitles first.");
+        return;
+    }
+
+    const blob =
+        new Blob([latestSRT], {type:"application/x-subrip;charset=utf-8"});
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download =
+        latestVoiceFileName.replace(/\.mp3$/i,".srt");
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+
+    showToast("SRT download started.");
+}
+
+function copySRT(){
+
+    if(!latestSRT.trim()){
+        showToast("Generate subtitles first.");
+        return;
+    }
+
+    navigator.clipboard.writeText(latestSRT)
+        .then(()=>showToast("SRT subtitles copied."))
         .catch(()=>showToast("Copy unavailable in this browser."));
 }
 
