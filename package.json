@@ -1,5 +1,6 @@
 {
+  "type": "module",
   "dependencies": {
-    "@travisvn/edge-tts": "^1.0.2"
+    "@travisvn/edge-tts": "^1.0.3"
   }
 }
