@@ -972,6 +972,134 @@ a{
 }
 
 /* =========================
+   VIDEO PRODUCTION PLANNER
+========================= */
+
+.production-planner{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-top:16px;
+}
+
+.planner-card{
+    border:1px solid var(--border);
+    background:rgba(255,255,255,.025);
+    border-radius:18px;
+    padding:20px;
+}
+
+.planner-card h3{
+    font-size:14px;
+    margin-bottom:6px;
+}
+
+.planner-card .card-desc{
+    margin-bottom:16px;
+}
+
+.planner-summary{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:9px;
+    margin-top:14px;
+}
+
+.planner-stat{
+    border:1px solid var(--border);
+    border-radius:11px;
+    padding:11px;
+    background:rgba(0,0,0,.12);
+}
+
+.planner-stat-label{
+    color:var(--muted2);
+    font-size:8px;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+}
+
+.planner-stat-value{
+    font-size:13px;
+    font-weight:800;
+    margin-top:5px;
+}
+
+.production-scene{
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:15px;
+    margin-top:10px;
+    background:rgba(0,0,0,.12);
+}
+
+.production-scene-head{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:flex-start;
+}
+
+.production-scene-number{
+    color:var(--gold);
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.12em;
+}
+
+.production-scene-title{
+    font-size:12px;
+    font-weight:800;
+    margin-top:4px;
+}
+
+.production-scene-time{
+    color:var(--muted2);
+    font-size:9px;
+    white-space:nowrap;
+}
+
+.production-detail{
+    margin-top:11px;
+    display:grid;
+    gap:8px;
+}
+
+.production-detail-row{
+    padding:9px 10px;
+    border-radius:9px;
+    background:rgba(255,255,255,.025);
+}
+
+.production-detail-label{
+    color:var(--gold);
+    font-size:8px;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    margin-bottom:4px;
+}
+
+.production-detail-value{
+    color:var(--muted);
+    font-size:10px;
+    line-height:1.55;
+}
+
+.planner-empty{
+    text-align:center;
+    padding:35px 18px;
+    color:var(--muted2);
+    border:1px dashed var(--border);
+    border-radius:14px;
+}
+
+@media(max-width:900px){
+    .production-planner{
+        grid-template-columns:1fr;
+    }
+}
+
+/* =========================
    MOBILE
 ========================= */
 
@@ -1887,183 +2015,137 @@ It's fewer interruptions.
 
         <div>
             <h2>Video Studio</h2>
-            <p>Prepare the production blueprint for your video.</p>
+            <p>Turn your finished script into a production-ready video blueprint.</p>
         </div>
 
-        <span class="badge">Video Engine — Next Phase</span>
+        <span class="badge">Production Planner — Active</span>
 
     </div>
 
+    <div class="production-planner">
 
-    <div class="publish-grid">
-
-        <div class="card">
+        <div class="planner-card">
 
             <h3>Production Settings</h3>
 
             <p class="card-desc">
-                These controls will later connect to the real video-generation backend.
+                Configure the creative direction before generating the production plan.
             </p>
 
+            <div class="field">
+                <label>Project</label>
+                <input class="input" id="videoProject" value="Your Brain Is Addicted to Distraction">
+            </div>
 
-            <div style="margin-top:22px;">
+            <div class="field">
+                <label>Voice</label>
+                <select class="select" id="videoVoice">
+                    <option>Professional Male</option>
+                    <option>Professional Female</option>
+                    <option>Calm Documentary</option>
+                    <option>Energetic Narrator</option>
+                </select>
+            </div>
 
-                <div class="field">
+            <div class="field">
+                <label>Visual Source</label>
+                <select class="select" id="videoVisualSource">
+                    <option>AI + Licensed Stock</option>
+                    <option>Licensed Stock</option>
+                    <option>AI Visuals</option>
+                    <option>Custom Uploads</option>
+                </select>
+            </div>
 
-                    <label>Project</label>
+            <div class="field">
+                <label>Format</label>
+                <select class="select" id="videoFormat">
+                    <option>9:16 Vertical</option>
+                    <option>16:9 YouTube</option>
+                    <option>1:1 Square</option>
+                </select>
+            </div>
 
-                    <input class="input"
-                           value="Your Brain Is Addicted to Distraction">
+            <div class="field">
+                <label>Captions</label>
+                <select class="select" id="videoCaptions">
+                    <option>Dynamic Captions</option>
+                    <option>Minimal Captions</option>
+                    <option>No Captions</option>
+                </select>
+            </div>
 
+            <div class="field">
+                <label>Music Direction</label>
+                <select class="select" id="videoMusic">
+                    <option>Cinematic Ambient</option>
+                    <option>Minimal Documentary</option>
+                    <option>Dark Tension</option>
+                    <option>No Music</option>
+                </select>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%;" onclick="createProductionPlan()">
+                🎬 Create Production Plan
+            </button>
+
+            <div class="planner-summary">
+                <div class="planner-stat">
+                    <div class="planner-stat-label">Status</div>
+                    <div class="planner-stat-value" id="plannerStatus">Waiting</div>
                 </div>
-
-
-                <div class="field">
-
-                    <label>Voice</label>
-
-                    <select class="select">
-                        <option>Professional Male</option>
-                        <option>Professional Female</option>
-                        <option>Calm Documentary</option>
-                        <option>Energetic Narrator</option>
-                    </select>
-
+                <div class="planner-stat">
+                    <div class="planner-stat-label">Scenes</div>
+                    <div class="planner-stat-value" id="plannerSceneCount">0</div>
                 </div>
-
-
-                <div class="field">
-
-                    <label>Visual Source</label>
-
-                    <select class="select">
-                        <option>AI + Licensed Stock</option>
-                        <option>Licensed Stock</option>
-                        <option>AI Visuals</option>
-                        <option>Custom Uploads</option>
-                    </select>
-
+                <div class="planner-stat">
+                    <div class="planner-stat-label">Format</div>
+                    <div class="planner-stat-value" id="plannerFormatValue">9:16</div>
                 </div>
-
-
-                <div class="field">
-
-                    <label>Format</label>
-
-                    <select class="select">
-                        <option>9:16 Vertical</option>
-                        <option>16:9 YouTube</option>
-                        <option>1:1 Square</option>
-                    </select>
-
-                </div>
-
-
-                <div class="field">
-
-                    <label>Captions</label>
-
-                    <select class="select">
-                        <option>Dynamic Captions</option>
-                        <option>Minimal Captions</option>
-                        <option>No Captions</option>
-                    </select>
-
-                </div>
-
-
-                <button class="btn btn-primary"
-                        style="width:100%;"
-                        onclick="showToast('Video engine connection will be added in Phase 2.')">
-                    🎬 Prepare Video
-                </button>
-
             </div>
 
         </div>
 
-
-        <div class="card">
+        <div class="planner-card">
 
             <h3>Production Pipeline</h3>
-
             <p class="card-desc">
-                The future production flow for The Inner Edge.
+                The planner converts the script into instructions for the future voice, visual and rendering engines.
             </p>
 
-
-            <div style="margin-top:20px;display:flex;flex-direction:column;gap:9px;">
-
-                <div class="recent-item">
-                    <div>
-                        <div class="recent-title">01 · Script</div>
-                        <div class="recent-meta">Content structure ready</div>
-                    </div>
-                    <span class="pill ready">Ready</span>
-                </div>
-
-
-                <div class="recent-item">
-                    <div>
-                        <div class="recent-title">02 · Scenes</div>
-                        <div class="recent-meta">Visual plan generated</div>
-                    </div>
-                    <span class="pill ready">Ready</span>
-                </div>
-
-
-                <div class="recent-item">
-                    <div>
-                        <div class="recent-title">03 · Voice</div>
-                        <div class="recent-meta">Awaiting backend</div>
-                    </div>
-                    <span class="pill draft">Next</span>
-                </div>
-
-
-                <div class="recent-item">
-                    <div>
-                        <div class="recent-title">04 · Visuals</div>
-                        <div class="recent-meta">AI / stock integration</div>
-                    </div>
-                    <span class="pill draft">Next</span>
-                </div>
-
-
-                <div class="recent-item">
-                    <div>
-                        <div class="recent-title">05 · Render</div>
-                        <div class="recent-meta">MP4 generation</div>
-                    </div>
-                    <span class="pill draft">Next</span>
-                </div>
-
-
-                <div class="recent-item">
-                    <div>
-                        <div class="recent-title">06 · Publish</div>
-                        <div class="recent-meta">TikTok / YouTube / Instagram</div>
-                    </div>
-                    <span class="pill draft">Next</span>
-                </div>
-
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:9px;">
+                <div class="recent-item"><div><div class="recent-title">01 · Script</div><div class="recent-meta">AI script from Script Studio</div></div><span class="pill ready">Ready</span></div>
+                <div class="recent-item"><div><div class="recent-title">02 · Production Plan</div><div class="recent-meta">Scene, voice, visual and caption instructions</div></div><span class="pill ready" id="pipelinePlanStatus">Ready</span></div>
+                <div class="recent-item"><div><div class="recent-title">03 · Voice</div><div class="recent-meta">Narration generation</div></div><span class="pill draft">Next</span></div>
+                <div class="recent-item"><div><div class="recent-title">04 · Visuals</div><div class="recent-meta">AI / licensed stock selection</div></div><span class="pill draft">Next</span></div>
+                <div class="recent-item"><div><div class="recent-title">05 · Render</div><div class="recent-meta">MP4 generation and captions</div></div><span class="pill draft">Next</span></div>
+                <div class="recent-item"><div><div class="recent-title">06 · Publish</div><div class="recent-meta">TikTok / YouTube / Instagram</div></div><span class="pill draft">Next</span></div>
             </div>
 
         </div>
 
     </div>
 
+    <div class="planner-card" style="margin-top:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div>
+                <h3>AI Production Blueprint</h3>
+                <p class="card-desc">Scene-by-scene instructions generated from the latest Script Studio output.</p>
+            </div>
+            <span class="pill draft" id="productionPlanBadge">Not generated</span>
+        </div>
 
-    <div class="card" style="margin-top:16px;">
+        <div id="productionPlanResults" style="margin-top:16px;">
+            <div class="planner-empty">
+                <div style="font-size:28px;margin-bottom:9px;">◉</div>
+                Build a script first, then create the production plan here.
+            </div>
+        </div>
 
-        <h3>Production Philosophy</h3>
-
-        <p class="card-desc" style="max-width:800px;margin-top:7px;">
-            The goal is not to automate creativity away. The goal is to combine
-            research, storytelling, human judgment and technology into a repeatable
-            production system.
-        </p>
-
+        <div class="output-actions" style="margin-top:16px;">
+            <button class="btn" onclick="copyProductionPlan()">Copy Production Plan</button>
+            <button class="btn" onclick="showPage('studio')">Back to Script</button>
+        </div>
     </div>
 
 </section>
@@ -2524,11 +2606,11 @@ It's fewer interruptions.
             <div>
                 <div class="setting-title">Backend Status</div>
                 <div class="setting-description">
-                    Phase 1 frontend is operating without a remote AI backend.
+                    Gemini AI backend is connected through the secure Vercel API.
                 </div>
             </div>
 
-            <span class="pill draft">Phase 2</span>
+            <span class="pill ready">Connected</span>
 
         </div>
 
@@ -2616,6 +2698,14 @@ function showPage(pageId){
 
     breadcrumbName.textContent =
         pageNames[pageId] || "Dashboard";
+
+    if(pageId === "video") {
+        const scriptTitle = document.getElementById("scriptTitle");
+        const videoProject = document.getElementById("videoProject");
+        if(scriptTitle && videoProject && scriptTitle.textContent.trim()) {
+            videoProject.value = scriptTitle.textContent.trim();
+        }
+    }
 
     window.scrollTo({
         top:0,
@@ -3106,6 +3196,317 @@ function renderScenes(scenes){
 
         container.appendChild(row);
     });
+}
+
+
+/* =========================================================
+   VIDEO STUDIO — AI PRODUCTION PLANNER
+========================================================= */
+
+function getLatestScriptData(){
+
+    const topic =
+        (document.getElementById("scriptTitle")?.textContent ||
+        document.getElementById("scriptTopic")?.value ||
+        "The Inner Edge Video").trim();
+
+    const hook =
+        (document.getElementById("scriptHook")?.textContent || "").trim();
+
+    const script =
+        (document.getElementById("scriptBody")?.textContent || "").trim();
+
+    const caption =
+        (document.getElementById("scriptCaption")?.textContent || "").trim();
+
+    const hashtags =
+        (document.getElementById("scriptHashtags")?.textContent || "").trim();
+
+    const sceneElements =
+        Array.from(document.querySelectorAll("#scenePlan .scene"));
+
+    const scenes = sceneElements.map((scene, index) => ({
+        time: (scene.querySelector(".scene-time")?.textContent || `Scene ${index + 1}`).trim(),
+        title: (scene.querySelector(".scene-title")?.textContent || `Scene ${index + 1}`).trim(),
+        visual: (scene.querySelector(".scene-visual")?.textContent || "").trim(),
+        type: (scene.querySelector(".scene-type")?.textContent || "CINEMATIC").trim()
+    }));
+
+    return {topic, hook, script, caption, hashtags, scenes};
+}
+
+function buildFallbackProductionPlan(data, settings){
+
+    const sourceScenes = data.scenes.length
+        ? data.scenes
+        : [{time:"0:00-0:05",title:"Opening hook",visual:"Cinematic opening shot matching the hook.",type:"CINEMATIC"}];
+
+    return {
+        project: data.topic,
+        format: settings.format,
+        voice: settings.voice,
+        visualSource: settings.visualSource,
+        captions: settings.captions,
+        music: settings.music,
+        scenes: sourceScenes.map((scene, index) => ({
+            time: scene.time || `Scene ${index + 1}`,
+            title: scene.title || `Scene ${index + 1}`,
+            narration: index === 0 ? data.hook : "Continue the script naturally for this scene.",
+            visualPrompt: scene.visual || "Create a cinematic visual that supports the narration.",
+            camera: index === 0 ? "Slow push-in with a strong opening composition." : "Controlled cinematic movement with clean subject framing.",
+            captions: settings.captions === "No Captions" ? "No captions" : "Highlight the key phrase from the narration.",
+            edit: "Cut on the strongest sentence or visual beat; keep pacing purposeful.",
+            type: scene.type || "CINEMATIC"
+        }))
+    };
+}
+
+function parseProductionPlan(rawText, fallback){
+
+    if (!rawText) return fallback;
+
+    let text = String(rawText).trim()
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/```\s*$/i, "")
+        .trim();
+
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+
+    if (start !== -1 && end > start) {
+        try {
+            const obj = JSON.parse(text.slice(start, end + 1));
+            const scenes = Array.isArray(obj.scenes) ? obj.scenes.filter(Boolean).map((s, i) => ({
+                time: String(s.time || `Scene ${i + 1}`).trim(),
+                title: String(s.title || `Scene ${i + 1}`).trim(),
+                narration: String(s.narration || "").trim(),
+                visualPrompt: String(s.visualPrompt || s.visual || "").trim(),
+                camera: String(s.camera || "Controlled cinematic movement.").trim(),
+                captions: String(s.captions || "").trim(),
+                edit: String(s.edit || "Clean, purposeful edit.").trim(),
+                type: String(s.type || "CINEMATIC").trim().toUpperCase()
+            })) : [];
+
+            if (scenes.length) {
+                return {
+                    project: String(obj.project || fallback.project).trim(),
+                    format: String(obj.format || fallback.format).trim(),
+                    voice: String(obj.voice || fallback.voice).trim(),
+                    visualSource: String(obj.visualSource || fallback.visualSource).trim(),
+                    captions: String(obj.captions || fallback.captions).trim(),
+                    music: String(obj.music || fallback.music).trim(),
+                    scenes
+                };
+            }
+        } catch (error) {
+            console.warn("Production plan JSON parse failed. Using local fallback.", error);
+        }
+    }
+
+    return fallback;
+}
+
+function renderProductionPlan(plan){
+
+    const container = document.getElementById("productionPlanResults");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    plan.scenes.forEach((scene, index) => {
+
+        const card = document.createElement("div");
+        card.className = "production-scene";
+
+        card.innerHTML = `
+            <div class="production-scene-head">
+                <div>
+                    <div class="production-scene-number">SCENE ${String(index + 1).padStart(2,"0")} · ${escapeHtml(scene.type)}</div>
+                    <div class="production-scene-title">${escapeHtml(scene.title)}</div>
+                </div>
+                <div class="production-scene-time">${escapeHtml(scene.time)}</div>
+            </div>
+            <div class="production-detail">
+                <div class="production-detail-row">
+                    <div class="production-detail-label">Narration</div>
+                    <div class="production-detail-value">${escapeHtml(scene.narration)}</div>
+                </div>
+                <div class="production-detail-row">
+                    <div class="production-detail-label">Visual Prompt</div>
+                    <div class="production-detail-value">${escapeHtml(scene.visualPrompt)}</div>
+                </div>
+                <div class="production-detail-row">
+                    <div class="production-detail-label">Camera / Motion</div>
+                    <div class="production-detail-value">${escapeHtml(scene.camera)}</div>
+                </div>
+                <div class="production-detail-row">
+                    <div class="production-detail-label">Captions</div>
+                    <div class="production-detail-value">${escapeHtml(scene.captions)}</div>
+                </div>
+                <div class="production-detail-row">
+                    <div class="production-detail-label">Edit Direction</div>
+                    <div class="production-detail-value">${escapeHtml(scene.edit)}</div>
+                </div>
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+async function createProductionPlan(){
+
+    const data = getLatestScriptData();
+
+    if (!data.script && !data.hook && !data.scenes.length) {
+        showToast("Build a script first.");
+        showPage("studio");
+        return;
+    }
+
+    const settings = {
+        format: document.getElementById("videoFormat")?.value || "9:16 Vertical",
+        voice: document.getElementById("videoVoice")?.value || "Professional Male",
+        visualSource: document.getElementById("videoVisualSource")?.value || "AI + Licensed Stock",
+        captions: document.getElementById("videoCaptions")?.value || "Dynamic Captions",
+        music: document.getElementById("videoMusic")?.value || "Cinematic Ambient"
+    };
+
+    const status = document.getElementById("plannerStatus");
+    const sceneCount = document.getElementById("plannerSceneCount");
+    const formatValue = document.getElementById("plannerFormatValue");
+    const badge = document.getElementById("productionPlanBadge");
+    const results = document.getElementById("productionPlanResults");
+    const pipeline = document.getElementById("pipelinePlanStatus");
+
+    if (status) status.textContent = "Generating...";
+    if (formatValue) formatValue.textContent = settings.format.split(" ")[0];
+    if (badge) {
+        badge.textContent = "Generating";
+        badge.className = "pill draft";
+    }
+    if (pipeline) pipeline.textContent = "Working";
+
+    results.innerHTML = `
+        <div class="planner-empty">
+            <div style="font-size:28px;margin-bottom:9px;">✦</div>
+            Gemini is turning the script into a production blueprint...
+        </div>
+    `;
+
+    const fallback = buildFallbackProductionPlan(data, settings);
+
+    const prompt = `
+You are the Video Production Director for The Inner Edge — Master your mind. Master your life.
+
+Turn the following finished short-form script into a production-ready blueprint.
+
+PROJECT:
+${data.topic}
+
+HOOK:
+${data.hook}
+
+SCRIPT:
+${data.script}
+
+CAPTION:
+${data.caption}
+
+HASHTAGS:
+${data.hashtags}
+
+EXISTING SCENE PLAN:
+${JSON.stringify(data.scenes)}
+
+PRODUCTION SETTINGS:
+Voice: ${settings.voice}
+Visual source: ${settings.visualSource}
+Format: ${settings.format}
+Captions: ${settings.captions}
+Music: ${settings.music}
+
+Create a practical blueprint for a future automated video engine.
+Do not invent unsupported factual claims. Focus on production direction.
+
+Return ONLY valid JSON using exactly this shape:
+{
+  "project":"string",
+  "format":"string",
+  "voice":"string",
+  "visualSource":"string",
+  "captions":"string",
+  "music":"string",
+  "scenes":[
+    {
+      "time":"0:00-0:05",
+      "title":"string",
+      "narration":"string",
+      "visualPrompt":"string",
+      "camera":"string",
+      "captions":"string",
+      "edit":"string",
+      "type":"CINEMATIC"
+    }
+  ]
+}
+
+Rules:
+- Keep the existing story and meaning.
+- Create 4 to 8 scenes.
+- Each scene must have a useful visual prompt.
+- Include camera/motion direction.
+- Include caption direction.
+- Include editing direction.
+- Keep scene timing consistent with a 30–60 second short unless the script clearly requires otherwise.
+- Use concise plain text.
+`;
+
+    try {
+        const rawText = await callAI(prompt);
+        const plan = parseProductionPlan(rawText, fallback);
+        renderProductionPlan(plan);
+
+        if (status) status.textContent = "Ready";
+        if (sceneCount) sceneCount.textContent = String(plan.scenes.length);
+        if (badge) {
+            badge.textContent = "Ready";
+            badge.className = "pill ready";
+        }
+        if (pipeline) {
+            pipeline.textContent = "Ready";
+            pipeline.className = "pill ready";
+        }
+
+        showToast("Production plan generated.");
+    } catch (error) {
+        console.error(error);
+        renderProductionPlan(fallback);
+
+        if (status) status.textContent = "Fallback ready";
+        if (sceneCount) sceneCount.textContent = String(fallback.scenes.length);
+        if (badge) {
+            badge.textContent = "Local fallback";
+            badge.className = "pill draft";
+        }
+        if (pipeline) pipeline.textContent = "Ready";
+
+        showToast("AI planner unavailable. Local production plan created.");
+    }
+}
+
+function copyProductionPlan(){
+
+    const container = document.getElementById("productionPlanResults");
+
+    if (!container || !container.innerText.trim()) {
+        showToast("Create a production plan first.");
+        return;
+    }
+
+    navigator.clipboard.writeText(container.innerText)
+        .then(()=>showToast("Production plan copied."))
+        .catch(()=>showToast("Copy unavailable in this browser."));
 }
 
 
