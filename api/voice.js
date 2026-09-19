@@ -15,12 +15,12 @@ export default async function handler(req, res) {
         "Content-Type"
     );
 
-    // Handle browser preflight
+    // Browser preflight
     if (req.method === "OPTIONS") {
         return res.status(200).end();
     }
 
-    // Only POST is allowed
+    // Only POST
     if (req.method !== "POST") {
         return res.status(405).json({
             ok: false,
@@ -29,29 +29,60 @@ export default async function handler(req, res) {
     }
 
     try {
-        const {
-            text,
-            voice = "en-US-GuyNeural",
-            rate = "+0%",
-            volume = "+0%",
-            pitch = "+0Hz"
-        } = req.body || {};
+        let body = req.body;
+
+        // Handle string body
+        if (typeof body === "string") {
+            try {
+                body = JSON.parse(body);
+            } catch {
+                return res.status(400).json({
+                    ok: false,
+                    error: "Invalid JSON body"
+                });
+            }
+        }
+
+        // Handle Buffer body
+        if (Buffer.isBuffer(body)) {
+            try {
+                body = JSON.parse(body.toString("utf8"));
+            } catch {
+                return res.status(400).json({
+                    ok: false,
+                    error: "Invalid JSON body"
+                });
+            }
+        }
+
+        body = body || {};
+
+        const text = body.text;
+        const voice = body.voice || "en-US-GuyNeural";
+        const rate = body.rate || "+0%";
+        const volume = body.volume || "+0%";
+        const pitch = body.pitch || "+0Hz";
 
         // Validate text
         if (!text || typeof text !== "string") {
             return res.status(400).json({
                 ok: false,
-                error: "Text is required"
+                error: "Text is required",
+                receivedType: typeof text
             });
         }
 
-        // Prevent accidentally huge requests
         if (text.length > 12000) {
             return res.status(400).json({
                 ok: false,
                 error: "Text is too long. Maximum 12,000 characters."
             });
         }
+
+        console.log("Voice request received:", {
+            characters: text.length,
+            voice
+        });
 
         // Load Edge TTS
         const {
@@ -80,8 +111,13 @@ export default async function handler(req, res) {
 
         const audioBase64 = audioBuffer.toString("base64");
 
-        // Generate SRT subtitles
+        // Generate subtitles
         const srt = createSRT(result.subtitle);
+
+        console.log("Voice generation successful:", {
+            audioBytes: audioBuffer.length,
+            subtitleWords: result.subtitle.length
+        });
 
         return res.status(200).json({
             ok: true,
