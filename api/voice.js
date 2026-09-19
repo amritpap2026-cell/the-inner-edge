@@ -32,7 +32,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Prevent extremely large requests from causing unnecessary failures.
     if (text.length > 12000) {
       return res.status(400).json({
         ok: false,
@@ -41,26 +40,16 @@ export default async function handler(req, res) {
     }
 
     const voice = body.voice || "en-US-GuyNeural";
-    const rate = body.rate || "+0%";
-    const volume = body.volume || "+0%";
-    const pitch = body.pitch || "+0Hz";
 
+    // Edge TTS 1.0.2 expects rate/volume/pitch
+    // in the format accepted by its Communicate configuration.
+    // Use the package defaults by omitting these options.
     console.log("Edge TTS request:", {
       voice,
-      rate,
-      volume,
-      pitch,
       characters: text.length
     });
 
-    // Use the simple one-shot API.
-    // This avoids the streaming path that was causing your
-    // previous connection errors.
-    const tts = new EdgeTTS(text, voice, {
-      rate,
-      volume,
-      pitch
-    });
+    const tts = new EdgeTTS(text, voice);
 
     const result = await Promise.race([
       tts.synthesize(),
@@ -71,6 +60,10 @@ export default async function handler(req, res) {
         )
       )
     ]);
+
+    if (!result || !result.audio) {
+      throw new Error("Edge TTS returned no audio.");
+    }
 
     const audioBuffer = Buffer.from(
       await result.audio.arrayBuffer()
@@ -110,7 +103,7 @@ export default async function handler(req, res) {
     return res.status(502).json({
       ok: false,
       engine: "Microsoft Edge TTS",
-      error: "Edge TTS connection failed.",
+      error: "Edge TTS generation failed.",
       details: message
     });
   }
