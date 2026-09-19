@@ -1,7 +1,6 @@
 import { EdgeTTS, createSRT } from "@travisvn/edge-tts";
 
 export default async function handler(req, res) {
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -35,31 +34,25 @@ export default async function handler(req, res) {
     if (text.length > 12000) {
       return res.status(400).json({
         ok: false,
-        error: "Text is too long. Maximum is 12,000 characters per request."
+        error: "Text is too long. Maximum is 12,000 characters."
       });
     }
 
     const voice = body.voice || "en-US-GuyNeural";
 
-    // Edge TTS 1.0.2 expects rate/volume/pitch
-    // in the format accepted by its Communicate configuration.
-    // Use the package defaults by omitting these options.
-    console.log("Edge TTS request:", {
+    console.log("EDGE TTS START", {
       voice,
       characters: text.length
     });
 
     const tts = new EdgeTTS(text, voice);
 
-    const result = await Promise.race([
-      tts.synthesize(),
-      new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Edge TTS request timed out.")),
-          55000
-        )
-      )
-    ]);
+    console.log("EDGE TTS OBJECT CREATED");
+    console.log("EDGE TTS SYNTHESIS STARTING");
+
+    const result = await tts.synthesize();
+
+    console.log("EDGE TTS SYNTHESIS FINISHED");
 
     if (!result || !result.audio) {
       throw new Error("Edge TTS returned no audio.");
@@ -75,7 +68,7 @@ export default async function handler(req, res) {
 
     const subtitles = createSRT(result.subtitle || []);
 
-    console.log("Edge TTS success:", {
+    console.log("EDGE TTS SUCCESS", {
       bytes: audioBuffer.length,
       words: result.subtitle?.length || 0
     });
@@ -93,18 +86,13 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error("EDGE TTS ERROR:", error);
-
-    const message =
-      error?.message ||
-      String(error) ||
-      "Unknown Edge TTS error";
+    console.error("EDGE TTS FAILURE:", error);
 
     return res.status(502).json({
       ok: false,
       engine: "Microsoft Edge TTS",
       error: "Edge TTS generation failed.",
-      details: message
+      details: error?.message || String(error)
     });
   }
 }
