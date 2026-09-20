@@ -2131,7 +2131,7 @@ It's fewer interruptions.
                     </button>
 
                     <button class="btn"
-                            onclick="showToast('Saved to Content Library.')">
+                            onclick="saveProject()">
                         Save Project
                     </button>
 
@@ -2467,6 +2467,8 @@ It's fewer interruptions.
 
 
     <div class="library-grid">
+
+        <div id="savedProjects" style="display:contents;"></div>
 
         <div class="project-card">
 
@@ -5195,6 +5197,257 @@ function copyScript(){
 
 
 /* =========================================================
+   PROJECT PERSISTENCE — CONTENT LIBRARY
+========================================================= */
+
+const PROJECT_STORAGE_KEY = "theInnerEdgeProjectsV1";
+
+function getSavedProjects(){
+    try{
+        const raw = localStorage.getItem(PROJECT_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+    }catch(error){
+        console.warn("Could not read saved projects:", error);
+        return [];
+    }
+}
+
+function writeSavedProjects(projects){
+    localStorage.setItem(
+        PROJECT_STORAGE_KEY,
+        JSON.stringify(projects)
+    );
+}
+
+function collectProjectSnapshot(){
+    const data = getLatestScriptData();
+
+    const title =
+        data.topic ||
+        "The Inner Edge Video";
+
+    const settings = {
+        format: document.getElementById("videoFormat")?.value || "9:16 Vertical",
+        voice: document.getElementById("videoVoice")?.value || "Professional Male",
+        visualSource: document.getElementById("videoVisualSource")?.value || "AI + Licensed Stock",
+        captions: document.getElementById("videoCaptions")?.value || "Dynamic Captions",
+        music: document.getElementById("videoMusic")?.value || "Cinematic Ambient"
+    };
+
+    return {
+        id: "project-" + Date.now() + "-" + Math.random().toString(36).slice(2,8),
+        title,
+        hook: data.hook,
+        script: data.script,
+        caption: data.caption,
+        hashtags: data.hashtags,
+        scenes: data.scenes,
+        productionPlan: latestProductionPlan || null,
+        settings,
+        updatedAt: new Date().toISOString()
+    };
+}
+
+function saveProject(){
+    const snapshot = collectProjectSnapshot();
+
+    if(!snapshot.script && !snapshot.hook && !snapshot.scenes.length){
+        showToast("Create a script before saving the project.");
+        showPage("studio");
+        return;
+    }
+
+    try{
+        const projects = getSavedProjects();
+
+        projects.unshift(snapshot);
+
+        // Keep the local library lightweight and predictable.
+        const trimmed = projects.slice(0,20);
+
+        writeSavedProjects(trimmed);
+        renderSavedProjects();
+
+        showToast("Project saved to Content Library.");
+    }catch(error){
+        console.error("Save project error:",error);
+        showToast("Could not save the project in this browser.");
+    }
+}
+
+function deleteSavedProject(id){
+    const projects = getSavedProjects()
+        .filter(project => project.id !== id);
+
+    writeSavedProjects(projects);
+    renderSavedProjects();
+    showToast("Saved project removed.");
+}
+
+function loadSavedProject(id){
+    const project = getSavedProjects()
+        .find(item => item.id === id);
+
+    if(!project){
+        showToast("Saved project could not be found.");
+        return;
+    }
+
+    const title = document.getElementById("scriptTitle");
+    const hook = document.getElementById("scriptHook");
+    const body = document.getElementById("scriptBody");
+    const caption = document.getElementById("scriptCaption");
+    const hashtags = document.getElementById("scriptHashtags");
+    const status = document.getElementById("scriptStatus");
+
+    if(title) title.textContent = project.title || "";
+    if(hook) hook.textContent = project.hook || "";
+    if(body){
+        body.setAttribute("contenteditable","false");
+        body.style.outline = "";
+        body.style.borderColor = "";
+        body.textContent = project.script || "";
+    }
+    if(caption) caption.textContent = project.caption || "";
+    if(hashtags) hashtags.textContent = project.hashtags || "";
+
+    if(project.scenes){
+        renderScenes(project.scenes);
+    }
+
+    if(project.settings){
+        const settings = project.settings;
+        const fields = {
+            videoFormat: settings.format,
+            videoVoice: settings.voice,
+            videoVisualSource: settings.visualSource,
+            videoCaptions: settings.captions,
+            videoMusic: settings.music
+        };
+
+        Object.keys(fields).forEach(id=>{
+            const element = document.getElementById(id);
+            if(element && fields[id] != null){
+                const option = Array.from(element.options || [])
+                    .find(item => item.value === fields[id] || item.textContent === fields[id]);
+
+                if(option){
+                    element.value = option.value;
+                }
+            }
+        });
+    }
+
+    latestProductionPlan = project.productionPlan || null;
+
+    if(latestProductionPlan){
+        renderProductionPlan(latestProductionPlan);
+
+        const sceneCount = document.getElementById("plannerSceneCount");
+        const badge = document.getElementById("productionPlanBadge");
+        const pipeline = document.getElementById("pipelinePlanStatus");
+
+        if(sceneCount){
+            sceneCount.textContent =
+                String(latestProductionPlan.scenes?.length || 0);
+        }
+
+        if(badge){
+            badge.textContent = "Saved";
+            badge.className = "pill ready";
+        }
+
+        if(pipeline){
+            pipeline.textContent = "Ready";
+            pipeline.className = "pill ready";
+        }
+    }
+
+    // A saved project contains the creative state, not generated media blobs.
+    // Fresh voice/video output is intentionally invalidated when a project is loaded.
+    latestVoiceBlob = null;
+    latestSRT = "";
+    renderedVideoBlob = null;
+
+    const voiceAudio = document.getElementById("voiceAudio");
+    const srtOutput = document.getElementById("srtOutput");
+    const voiceInfo = document.getElementById("voiceInfo");
+
+    if(voiceAudio){
+        voiceAudio.removeAttribute("src");
+        voiceAudio.load();
+    }
+
+    if(srtOutput){
+        srtOutput.textContent = "";
+    }
+
+    if(voiceInfo){
+        voiceInfo.textContent =
+            "Saved project loaded. Generate fresh narration before rendering.";
+    }
+
+    if(status){
+        status.textContent = "Saved project loaded";
+    }
+
+    updateVideoRendererState();
+    showPage("studio");
+    showToast("Saved project loaded.");
+}
+
+function renderSavedProjects(){
+    const container = document.getElementById("savedProjects");
+    if(!container) return;
+
+    const projects = getSavedProjects();
+
+    container.innerHTML = projects.map(project=>{
+        const date = project.updatedAt
+            ? new Date(project.updatedAt).toLocaleDateString()
+            : "Saved project";
+
+        const title = escapeHtml(project.title || "Untitled project");
+        const id = escapeForAttribute(project.id);
+
+        return `
+            <div class="project-card">
+                <div class="project-cover">
+                    <span>Saved · The Inner Edge</span>
+                </div>
+
+                <div class="project-info">
+                    <h3>${title}</h3>
+                    <p>Saved creative project · ${escapeHtml(date)}</p>
+
+                    <div class="project-footer">
+                        <span class="pill ready">Saved</span>
+
+                        <div style="display:flex;gap:7px;">
+                            <button class="btn"
+                                    onclick="loadSavedProject('${id}')">
+                                Open
+                            </button>
+
+                            <button class="btn btn-danger"
+                                    onclick="deleteSavedProject('${id}')">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function initializeProjectLibrary(){
+    renderSavedProjects();
+}
+
+
+/* =========================================================
    SETTINGS
 ========================================================= */
 
@@ -5233,6 +5486,7 @@ document.addEventListener("keydown",(event)=>{
    INITIAL STATE
 ========================================================= */
 
+initializeProjectLibrary();
 showPage("dashboard");
 
 </script>
