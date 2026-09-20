@@ -187,7 +187,6 @@ export default async function handler(req, res) {
 
     const audioItems = chunkResults.flatMap(item => item.items);
 
-    const audioItems = allAudioItems;
 
     const mimeType =
       audioItems[0]?.mime_type ||
