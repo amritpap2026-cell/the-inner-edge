@@ -2306,9 +2306,21 @@ It's fewer interruptions.
 
                 <h4>Voice Settings</h4>
                 <p>
-                    Free-first narration using the secure The Inner Edge voice API.
-                    Your script stays on the server-side voice request and the browser receives the generated audio.
+                    Multi-engine narration with automatic fallback. Choose Auto for resilient generation or select a provider manually.
                 </p>
+
+                <div class="field">
+                    <label>Voice Engine</label>
+                    <select class="select" id="voiceEngine">
+                        <option value="auto" selected>🔄 Auto — automatic fallback</option>
+                        <option value="azure">Microsoft Azure Speech</option>
+                        <option value="google">Google Cloud TTS</option>
+                        <option value="edge">Edge TTS / Docker</option>
+                        <option value="elevenlabs">ElevenLabs</option>
+                        <option value="gemini">Gemini TTS</option>
+                        <option value="local">Local / Docker TTS</option>
+                    </select>
+                </div>
 
                 <div class="field">
                     <label>Voice Profile</label>
@@ -2346,7 +2358,7 @@ It's fewer interruptions.
                 </button>
 
                 <div class="voice-note">
-                    The voice request uses the current Script Studio text. Generate or edit the script first for the best result.
+                    Auto mode tries configured providers in order and falls back automatically if one is unavailable. API keys stay in Vercel Environment Variables.
                 </div>
 
             </div>
@@ -4066,6 +4078,10 @@ async function generateVoice(){
         return;
     }
 
+    const engine =
+        document.getElementById("voiceEngine")?.value ||
+        "auto";
+
     const profile = getVoiceProfile();
 
     const button = document.getElementById("generateVoiceButton");
@@ -4090,10 +4106,13 @@ async function generateVoice(){
     }
 
     if(projectName) projectName.textContent = data.topic;
-    if(engineValue) engineValue.textContent = "Gemini TTS";
+    if(engineValue) engineValue.textContent = engine === "auto" ? "Auto fallback" : engine;
     if(sizeValue) sizeValue.textContent = "Generating...";
     if(subtitleValue) subtitleValue.textContent = "—";
-    if(subtitles) subtitles.textContent = "Creating narration with Gemini TTS...";
+    if(subtitles) subtitles.textContent =
+        engine === "auto"
+            ? "Generating narration with automatic provider fallback..."
+            : `Generating narration with ${engine}...`;
 
     if(pipelineVoice){
         pipelineVoice.textContent = "Working";
@@ -4109,7 +4128,9 @@ async function generateVoice(){
             },
             body: JSON.stringify({
                 text: data.text,
-                voice: profile.voice
+                voice: profile.voice,
+                profile: profile.label,
+                engine
             })
         });
 
@@ -4173,12 +4194,6 @@ async function generateVoice(){
             audio.load();
         }
 
-        /*
-          Do not block subtitle generation on browser audio metadata.
-          Some Android browsers take several seconds to decode a freshly
-          created WAV blob. Generate usable SRT immediately from the script,
-          then refine timing when the browser exposes the real duration.
-        */
         const estimatedDuration =
             Math.max(
                 3,
@@ -4200,20 +4215,24 @@ async function generateVoice(){
 
         latestVoiceFileName = `${titleSlug}-voice.wav`;
 
+        const usedEngine =
+            result.engine ||
+            (engine === "auto" ? "Auto fallback" : engine);
+
         if(subtitles){
             subtitles.textContent =
                 latestSRT
-                    ? `Timed SRT subtitles generated from the script. ${countSRTEntries(latestSRT)} subtitle blocks ready.`
+                    ? `Voice ready with ${usedEngine}. Timed SRT subtitles generated. ${countSRTEntries(latestSRT)} subtitle blocks ready.`
                     : "No subtitle text was available.";
         }
 
-        if(engineValue) engineValue.textContent = "Gemini TTS";
+        if(engineValue) engineValue.textContent = usedEngine;
         if(sizeValue) sizeValue.textContent = formatBytes(latestVoiceBlob.size);
         if(subtitleValue) subtitleValue.textContent =
             latestSRT ? `${countSRTEntries(latestSRT)} blocks ready` : "Not generated";
 
         if(engineStatus){
-            engineStatus.textContent = "Gemini TTS";
+            engineStatus.textContent = usedEngine;
             engineStatus.className = "pill ready";
         }
 
@@ -4231,7 +4250,7 @@ async function generateVoice(){
         if(downloadSrtButton) downloadSrtButton.disabled = !latestSRT.trim();
         updateVideoRendererState();
 
-        showToast("Voice generated successfully.");
+        showToast(`Voice generated with ${usedEngine}.`);
 
     }catch(error){
 
