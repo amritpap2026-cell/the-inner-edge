@@ -3883,6 +3883,133 @@ function countSRTEntries(srt){
         .length;
 }
 
+function formatSRTTime(seconds){
+
+    seconds = Math.max(0, Number(seconds) || 0);
+
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    const millis = Math.floor((seconds - Math.floor(seconds)) * 1000);
+
+    return [
+        String(hours).padStart(2,"0"),
+        String(minutes).padStart(2,"0"),
+        String(secs).padStart(2,"0")
+    ].join(":") + "," + String(millis).padStart(3,"0");
+}
+
+function buildSRTFromScript(text, durationSeconds){
+
+    const clean = String(text || "")
+        .replace(/\s+/g," ")
+        .trim();
+
+    if(!clean) return "";
+
+    const words = clean.split(" ").filter(Boolean);
+
+    if(!words.length) return "";
+
+    let duration = Number(durationSeconds);
+
+    if(!Number.isFinite(duration) || duration <= 0){
+        duration = Math.max(3, (words.length / 2.45));
+    }
+
+    const chunks = [];
+    let current = [];
+
+    words.forEach(word => {
+
+        current.push(word);
+
+        const currentText = current.join(" ");
+        const endsSentence = /[.!?]["')\]]?$/.test(word);
+
+        if(
+            current.length >= 7 ||
+            currentText.length >= 48 ||
+            (endsSentence && current.length >= 3)
+        ){
+            chunks.push(current.join(" "));
+            current = [];
+        }
+    });
+
+    if(current.length){
+        chunks.push(current.join(" "));
+    }
+
+    const totalWeight = chunks.reduce(
+        (sum, chunk) => sum + Math.max(1, chunk.length),
+        0
+    );
+
+    let cursor = 0;
+
+    return chunks.map((chunk, index) => {
+
+        const weight = Math.max(1, chunk.length);
+        const chunkDuration = duration * (weight / totalWeight);
+        const start = cursor;
+        const end = index === chunks.length - 1
+            ? duration
+            : cursor + chunkDuration;
+
+        cursor = end;
+
+        return [
+            String(index + 1),
+            `${formatSRTTime(start)} --> ${formatSRTTime(end)}`,
+            chunk,
+            ""
+        ].join("\n");
+
+    }).join("\n");
+}
+
+async function getAudioDuration(audio, fallbackText){
+
+    if(!audio) return null;
+
+    if(Number.isFinite(audio.duration) && audio.duration > 0){
+        return audio.duration;
+    }
+
+    try{
+        await new Promise((resolve, reject) => {
+
+            const timeout = setTimeout(
+                () => reject(new Error("Audio metadata timeout.")),
+                5000
+            );
+
+            const done = () => {
+                clearTimeout(timeout);
+                resolve();
+            };
+
+            audio.addEventListener("loadedmetadata", done, {once:true});
+            audio.addEventListener("durationchange", done, {once:true});
+        });
+
+        if(Number.isFinite(audio.duration) && audio.duration > 0){
+            return audio.duration;
+        }
+    }catch(error){
+        console.warn("Audio duration unavailable. Using text estimate.");
+    }
+
+    const wordCount = String(fallbackText || "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .length;
+
+    return Math.max(3, wordCount / 2.45);
+}
+
 function setVoiceStatus(text, ready=false){
 
     const status = document.getElementById("voiceStatus");
@@ -3993,7 +4120,12 @@ async function generateVoice(){
             audio.load();
         }
 
-        latestSRT = "";
+        const audioDuration = await getAudioDuration(audio, data.text);
+
+        latestSRT = buildSRTFromScript(
+            data.text,
+            audioDuration
+        );
 
         const titleSlug =
             String(data.topic)
@@ -4007,12 +4139,15 @@ async function generateVoice(){
 
         if(subtitles){
             subtitles.textContent =
-                "Narration generated successfully. Timed SRT subtitles are not included by the current Gemini TTS workflow.";
+                latestSRT
+                    ? `Timed SRT subtitles generated from the script. ${countSRTEntries(latestSRT)} subtitle blocks ready.`
+                    : "No subtitle text was available.";
         }
 
         if(engineValue) engineValue.textContent = "Gemini TTS";
         if(sizeValue) sizeValue.textContent = formatBytes(latestVoiceBlob.size);
-        if(subtitleValue) subtitleValue.textContent = "Not generated";
+        if(subtitleValue) subtitleValue.textContent =
+            latestSRT ? `${countSRTEntries(latestSRT)} blocks ready` : "Not generated";
 
         if(engineStatus){
             engineStatus.textContent = "Gemini TTS";
@@ -4030,7 +4165,7 @@ async function generateVoice(){
         const downloadSrtButton = document.getElementById("downloadSrtButton");
 
         if(downloadVoiceButton) downloadVoiceButton.disabled = false;
-        if(downloadSrtButton) downloadSrtButton.disabled = true;
+        if(downloadSrtButton) downloadSrtButton.disabled = !latestSRT.trim();
 
         showToast("Voice generated successfully.");
 
