@@ -4429,10 +4429,60 @@ function sceneDuration(scene,index,total){
 }
 
 function visualQuery(scene){
-    return String(scene?.visualPrompt||scene?.title||"cinematic psychology")
-        .replace(/\s+/g," ").trim()
+    /*
+      Build stock-search terms from the scene itself, not only the AI
+      visual prompt. This keeps the footage tied to what is actually
+      being narrated in each scene.
+    */
+    const stopWords = new Set([
+        "the","a","an","and","or","but","if","then","than","that","this",
+        "these","those","with","from","into","onto","for","you","your",
+        "yourself","our","their","they","them","are","is","was","were",
+        "be","been","being","to","of","in","on","at","as","by","it","its",
+        "we","us","i","he","she","his","her","will","would","can","could",
+        "should","do","does","did","not","no","so","very","just","how",
+        "why","what","when","where","who","which","about","through","over",
+        "more","most","less","some","any","all","one","two","first","second"
+    ]);
+
+    const clean = value => String(value || "")
         .replace(/[^a-zA-Z0-9 ,'\-]/g," ")
-        .split(" ").filter(Boolean).slice(0,12).join(" ");
+        .replace(/\s+/g," ")
+        .trim();
+
+    const title = clean(scene?.title);
+    const narration = clean(scene?.narration);
+    const prompt = clean(scene?.visualPrompt);
+
+    const narrationWords = narration
+        .toLowerCase()
+        .split(/\s+/)
+        .map(word => word.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi,""))
+        .filter(word => word.length >= 4 && !stopWords.has(word));
+
+    const promptWords = prompt
+        .toLowerCase()
+        .split(/\s+/)
+        .map(word => word.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi,""))
+        .filter(word => word.length >= 4 && !stopWords.has(word));
+
+    const unique = [];
+    [...narrationWords, ...promptWords].forEach(word => {
+        if(word && !unique.includes(word)) unique.push(word);
+    });
+
+    /*
+      Put concrete narration terms first, then the production-plan visual
+      prompt. Example: a scene about "sleep and blue light" searches for
+      those concepts rather than a generic "cinematic psychology" clip.
+    */
+    const terms = unique.slice(0,8).join(" ");
+    const fallback = [title, prompt].filter(Boolean).join(" ").slice(0,180);
+
+    return (terms || fallback || "cinematic psychology")
+        .replace(/\s+/g," ")
+        .trim()
+        .slice(0,180);
 }
 
 async function findVisual(query){
