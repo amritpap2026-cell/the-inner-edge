@@ -3756,15 +3756,15 @@ function copyProductionPlan(){
 
 
 /* =========================================================
-   VOICE GENERATOR — EDGE TTS VIA VERCEL
+   VOICE GENERATOR — GEMINI TTS VIA N8N
 ========================================================= */
 
-const VOICE_ENDPOINT = "https://the-inner-edge.vercel.app/api/voice";
+const VOICE_ENDPOINT = "https://amritpap2026a.app.n8n.cloud/webhook/inner-edge-voice";
 
 let latestVoiceBlob = null;
 let latestVoiceObjectUrl = "";
 let latestSRT = "";
-let latestVoiceFileName = "the-inner-edge-voice.mp3";
+let latestVoiceFileName = "the-inner-edge-voice.wav";
 
 function getVoiceProfile(){
 
@@ -3798,10 +3798,10 @@ function getVoiceText(){
 
     const data = getLatestScriptData();
 
-    let text = data.script.trim();
+    let text = String(data.script || "").trim();
 
     if (!text && data.hook) {
-        text = data.hook.trim();
+        text = String(data.hook).trim();
     }
 
     return {
@@ -3810,7 +3810,7 @@ function getVoiceText(){
     };
 }
 
-function base64ToBlob(base64, mimeType){
+function base64ToUint8Array(base64){
 
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
@@ -3819,7 +3819,41 @@ function base64ToBlob(base64, mimeType){
         bytes[i] = binary.charCodeAt(i);
     }
 
-    return new Blob([bytes], {type:mimeType || "audio/mpeg"});
+    return bytes;
+}
+
+function pcm16ToWavBlob(base64, sampleRate=24000, channels=1){
+
+    const pcm = base64ToUint8Array(base64);
+    const bytesPerSample = 2;
+    const blockAlign = channels * bytesPerSample;
+    const byteRate = sampleRate * blockAlign;
+
+    const buffer = new ArrayBuffer(44 + pcm.length);
+    const view = new DataView(buffer);
+
+    function writeString(offset, value){
+        for(let i = 0; i < value.length; i++){
+            view.setUint8(offset + i, value.charCodeAt(i));
+        }
+    }
+
+    writeString(0, "RIFF");
+    view.setUint32(4, 36 + pcm.length, true);
+    writeString(8, "WAVE");
+    writeString(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, channels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, 16, true);
+    writeString(36, "data");
+    view.setUint32(40, pcm.length, true);
+    new Uint8Array(buffer, 44).set(pcm);
+
+    return new Blob([buffer], {type:"audio/wav"});
 }
 
 function formatBytes(bytes){
@@ -3871,35 +3905,14 @@ async function generateVoice(){
 
     const profile = getVoiceProfile();
 
-    const rate =
-        document.getElementById("voiceRate")?.value || "0%";
-
-    const pitch =
-        document.getElementById("voicePitch")?.value || "+0Hz";
-
-    const button =
-        document.getElementById("generateVoiceButton");
-
-    const engineStatus =
-        document.getElementById("voiceEngineStatus");
-
-    const projectName =
-        document.getElementById("voiceProjectName");
-
-    const engineValue =
-        document.getElementById("voiceEngineValue");
-
-    const sizeValue =
-        document.getElementById("voiceSizeValue");
-
-    const subtitleValue =
-        document.getElementById("voiceSubtitleValue");
-
-    const subtitles =
-        document.getElementById("voiceSubtitles");
-
-    const pipelineVoice =
-        document.getElementById("pipelineVoiceStatus");
+    const button = document.getElementById("generateVoiceButton");
+    const engineStatus = document.getElementById("voiceEngineStatus");
+    const projectName = document.getElementById("voiceProjectName");
+    const engineValue = document.getElementById("voiceEngineValue");
+    const sizeValue = document.getElementById("voiceSizeValue");
+    const subtitleValue = document.getElementById("voiceSubtitleValue");
+    const subtitles = document.getElementById("voiceSubtitles");
+    const pipelineVoice = document.getElementById("pipelineVoiceStatus");
 
     setVoiceStatus("Generating");
 
@@ -3913,14 +3926,11 @@ async function generateVoice(){
         engineStatus.className = "pill draft";
     }
 
-    if(projectName){
-        projectName.textContent = data.topic;
-    }
-
-    if(engineValue) engineValue.textContent = "Edge TTS";
+    if(projectName) projectName.textContent = data.topic;
+    if(engineValue) engineValue.textContent = "Gemini TTS";
     if(sizeValue) sizeValue.textContent = "Generating...";
-    if(subtitleValue) subtitleValue.textContent = "Generating...";
-    if(subtitles) subtitles.textContent = "Creating narration and timed subtitles...";
+    if(subtitleValue) subtitleValue.textContent = "—";
+    if(subtitles) subtitles.textContent = "Creating narration with Gemini TTS...";
 
     if(pipelineVoice){
         pipelineVoice.textContent = "Working";
@@ -3936,10 +3946,7 @@ async function generateVoice(){
             },
             body: JSON.stringify({
                 text: data.text,
-                voice: profile.voice,
-                rate,
-                volume: "+0%",
-                pitch
+                voice: profile.voice
             })
         });
 
@@ -3968,22 +3975,25 @@ async function generateVoice(){
             URL.revokeObjectURL(latestVoiceObjectUrl);
         }
 
-        latestVoiceBlob = base64ToBlob(
+        const sampleRate = Number(result.sampleRate || 24000);
+        const channels = Number(result.channels || 1);
+
+        latestVoiceBlob = pcm16ToWavBlob(
             result.audio,
-            result.audioMimeType || "audio/mpeg"
+            sampleRate,
+            channels
         );
 
         latestVoiceObjectUrl = URL.createObjectURL(latestVoiceBlob);
 
-        const audio =
-            document.getElementById("voiceAudio");
+        const audio = document.getElementById("voiceAudio");
 
         if(audio){
             audio.src = latestVoiceObjectUrl;
             audio.load();
         }
 
-        latestSRT = String(result.subtitles || "");
+        latestSRT = "";
 
         const titleSlug =
             String(data.topic)
@@ -3993,33 +4003,19 @@ async function generateVoice(){
                 .slice(0,70) ||
             "the-inner-edge-video";
 
-        latestVoiceFileName =
-            `${titleSlug}-voice.mp3`;
+        latestVoiceFileName = `${titleSlug}-voice.wav`;
 
         if(subtitles){
             subtitles.textContent =
-                latestSRT ||
-                "No SRT subtitles were returned.";
+                "Narration generated successfully. Timed SRT subtitles are not included by the current Gemini TTS workflow.";
         }
 
-        if(engineValue){
-            engineValue.textContent =
-                result.engine || "Edge TTS";
-        }
-
-        if(sizeValue){
-            sizeValue.textContent =
-                formatBytes(result.size || latestVoiceBlob.size);
-        }
-
-        if(subtitleValue){
-            subtitleValue.textContent =
-                `${countSRTEntries(latestSRT)} cues`;
-        }
+        if(engineValue) engineValue.textContent = "Gemini TTS";
+        if(sizeValue) sizeValue.textContent = formatBytes(latestVoiceBlob.size);
+        if(subtitleValue) subtitleValue.textContent = "Not generated";
 
         if(engineStatus){
-            engineStatus.textContent =
-                profile.label;
+            engineStatus.textContent = "Gemini TTS";
             engineStatus.className = "pill ready";
         }
 
@@ -4030,8 +4026,11 @@ async function generateVoice(){
             pipelineVoice.className = "pill ready";
         }
 
-        document.getElementById("downloadVoiceButton").disabled = false;
-        document.getElementById("downloadSrtButton").disabled = !latestSRT;
+        const downloadVoiceButton = document.getElementById("downloadVoiceButton");
+        const downloadSrtButton = document.getElementById("downloadSrtButton");
+
+        if(downloadVoiceButton) downloadVoiceButton.disabled = false;
+        if(downloadSrtButton) downloadSrtButton.disabled = true;
 
         showToast("Voice generated successfully.");
 
@@ -4059,7 +4058,7 @@ async function generateVoice(){
             pipelineVoice.className = "pill draft";
         }
 
-        showToast("Voice generation failed. Check the API deployment and try again.");
+        showToast("Voice generation failed.");
 
     }finally{
 
@@ -4089,13 +4088,13 @@ function downloadVoice(){
 
     setTimeout(()=>URL.revokeObjectURL(url),1000);
 
-    showToast("MP3 download started.");
+    showToast("WAV download started.");
 }
 
 function downloadSRT(){
 
     if(!latestSRT.trim()){
-        showToast("Generate subtitles first.");
+        showToast("Timed subtitles are not available yet.");
         return;
     }
 
@@ -4107,7 +4106,7 @@ function downloadSRT(){
 
     link.href = url;
     link.download =
-        latestVoiceFileName.replace(/\.mp3$/i,".srt");
+        latestVoiceFileName.replace(/\.wav$/i,".srt");
 
     document.body.appendChild(link);
     link.click();
@@ -4121,7 +4120,7 @@ function downloadSRT(){
 function copySRT(){
 
     if(!latestSRT.trim()){
-        showToast("Generate subtitles first.");
+        showToast("Timed subtitles are not available yet.");
         return;
     }
 
