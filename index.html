@@ -4168,11 +4168,20 @@ async function generateVoice(){
         const sampleRate = Number(result.sampleRate || 24000);
         const channels = Number(result.channels || 1);
 
-        latestVoiceBlob = pcm16ToWavBlob(
-            result.audio,
-            sampleRate,
-            channels
-        );
+        // The backend may return raw PCM or a compressed browser-friendly format.
+        // Use the declared format instead of always treating audio as PCM.
+        if(String(result.audioFormat || "").toLowerCase() === "mp3"){
+            latestVoiceBlob = new Blob(
+                [base64ToUint8Array(result.audio)],
+                {type: result.mimeType || "audio/mpeg"}
+            );
+        }else{
+            latestVoiceBlob = pcm16ToWavBlob(
+                result.audio,
+                sampleRate,
+                channels
+            );
+        }
 
         latestVoiceObjectUrl = URL.createObjectURL(latestVoiceBlob);
 
