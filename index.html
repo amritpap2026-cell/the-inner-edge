@@ -2120,6 +2120,12 @@ It's fewer interruptions.
                 <div class="output-actions">
 
                     <button class="btn"
+                            id="editScriptButton"
+                            onclick="toggleScriptEditor()">
+                        ✎ Edit Script
+                    </button>
+
+                    <button class="btn"
                             onclick="copyScript()">
                         Copy Script
                     </button>
@@ -4983,6 +4989,83 @@ function updateVideoRendererState(){
             !(latestVoiceBlob&&
               latestSRT.trim()&&
               latestProductionPlan?.scenes?.length);
+    }
+}
+
+
+/* =========================================================
+   SCRIPT EDITOR
+========================================================= */
+
+function toggleScriptEditor(){
+
+    const body = document.getElementById("scriptBody");
+    const button = document.getElementById("editScriptButton");
+    const status = document.getElementById("scriptStatus");
+
+    if(!body || !button) return;
+
+    const editing = body.getAttribute("contenteditable") === "true";
+
+    if(editing){
+
+        const text = body.innerText.trim();
+
+        if(!text){
+            showToast("Script cannot be empty.");
+            body.focus();
+            return;
+        }
+
+        body.setAttribute("contenteditable","false");
+        body.style.outline = "";
+        body.style.borderColor = "";
+        button.textContent = "✎ Edit Script";
+
+        if(status){
+            status.textContent = "Edited";
+        }
+
+        // Editing the narration invalidates old voice/subtitle/production output
+        // so the next generation always uses the exact edited script.
+        latestVoiceBlob = null;
+        latestSRT = "";
+        latestProductionPlan = null;
+
+        const voiceAudio = document.getElementById("voiceAudio");
+        const srtOutput = document.getElementById("srtOutput");
+        const voiceInfo = document.getElementById("voiceInfo");
+
+        if(voiceAudio){
+            voiceAudio.removeAttribute("src");
+            voiceAudio.load();
+        }
+
+        if(srtOutput){
+            srtOutput.textContent = "";
+        }
+
+        if(voiceInfo){
+            voiceInfo.textContent = "Script edited. Generate voice again to create fresh narration and subtitles.";
+        }
+
+        updateVideoRendererState();
+        showToast("Script updated.");
+
+    }else{
+
+        body.setAttribute("contenteditable","true");
+        body.style.outline = "none";
+        body.style.borderColor = "rgba(216,179,106,.5)";
+        button.textContent = "✓ Save Script";
+
+        if(status){
+            status.textContent = "Editing";
+        }
+
+        body.focus();
+
+        showToast("Edit mode on. Paste or edit your full script.");
     }
 }
 
