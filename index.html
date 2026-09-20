@@ -1352,6 +1352,16 @@ a{
         padding:24px;
     }
 }
+
+
+/* =========================
+   BROWSER VIDEO RENDERER
+========================= */
+.video-renderer{margin-top:16px}
+.video-renderer-grid{display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start}
+.video-preview{width:100%;max-width:280px;aspect-ratio:9/16;background:#050608;border:1px solid var(--border);border-radius:16px;overflow:hidden;object-fit:cover}
+.video-render-info{color:var(--muted);font-size:10px;line-height:1.6;margin-top:8px}
+@media(max-width:900px){.video-renderer-grid{grid-template-columns:1fr}.video-preview{max-width:220px}}
 </style>
 </head>
 
@@ -2392,6 +2402,28 @@ It's fewer interruptions.
         </div>
     </div>
 
+</section>
+
+
+<!-- =========================
+     FINAL VIDEO RENDERER
+========================= -->
+<section class="planner-card video-renderer">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div><h3>Final Video Renderer</h3><p class="card-desc">Create a 9:16 video from the generated narration and timed SRT captions directly in the browser.</p></div>
+        <span class="pill draft" id="videoRenderStatus">Waiting</span>
+    </div>
+    <div class="video-renderer-grid" style="margin-top:16px;">
+        <div><video class="video-preview" id="renderedVideo" controls playsinline></video></div>
+        <div class="voice-control-card" style="position:static;">
+            <h4>Render Settings</h4>
+            <p>Uses the current voice track and SRT subtitles. The browser creates a vertical 720×1280 video with animated cinematic backgrounds and burned-in captions.</p>
+            <div class="field"><label>Video Format</label><select class="select" id="videoRenderFormat"><option value="720x1280" selected>9:16 Vertical — 720×1280</option></select></div>
+            <button class="btn btn-primary generate" id="renderVideoButton" onclick="renderFinalVideo()" disabled>🎬 Create Final Video</button>
+            <button class="btn generate" id="downloadVideoButton" onclick="downloadRenderedVideo()" disabled style="margin-top:8px;">Download Video</button>
+            <div class="video-render-info" id="videoRenderInfo">Generate voice first. The renderer will then use the WAV + SRT already created.</div>
+        </div>
+    </div>
 </section>
 
 
@@ -4166,6 +4198,7 @@ async function generateVoice(){
 
         if(downloadVoiceButton) downloadVoiceButton.disabled = false;
         if(downloadSrtButton) downloadSrtButton.disabled = !latestSRT.trim();
+        updateVideoRendererState();
 
         showToast("Voice generated successfully.");
 
@@ -4263,6 +4296,66 @@ function copySRT(){
         .then(()=>showToast("SRT subtitles copied."))
         .catch(()=>showToast("Copy unavailable in this browser."));
 }
+
+
+/* =========================================================
+   BROWSER VIDEO RENDERER
+========================================================= */
+let renderedVideoBlob=null;
+let renderedVideoUrl="";
+let renderAudioSource=null;
+let renderAudioContext=null;
+
+function parseSRT(srt){
+    return String(srt||"").trim().split(/\n\s*\n/).map(function(block){
+        const lines=block.split(/\r?\n/); if(lines.length<3)return null;
+        const timing=lines[1].split(" --> "); if(timing.length!==2)return null;
+        function sec(v){const m=v.trim().match(/(\d+):(\d{2}):(\d{2}),(\d{3})/);return m?Number(m[1])*3600+Number(m[2])*60+Number(m[3])+Number(m[4])/1000:0;}
+        return {start:sec(timing[0]),end:sec(timing[1]),text:lines.slice(2).join(" ").trim()};
+    }).filter(Boolean);
+}
+function getActiveSubtitle(entries,time){for(const e of entries){if(time>=e.start&&time<=e.end)return e.text;}return "";}
+function roundedRect(ctx,x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function drawVideoFrame(ctx,w,h,time,duration,caption,topic){
+    const p=duration?Math.min(1,time/duration):0,t=time*.18;
+    const a=210+Math.sin(t)*35,b=35+Math.cos(t*.7)*20;
+    const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,"hsl("+a+",25%,7%)");g.addColorStop(.55,"hsl("+b+",28%,10%)");g.addColorStop(1,"#050608");ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+    for(let i=0;i<5;i++){const x=w*(.15+i*.2)+Math.sin(t+i)*70,y=h*(.18+i*.16)+Math.cos(t*.8+i)*80,gl=ctx.createRadialGradient(x,y,0,x,y,220);gl.addColorStop(0,"hsla("+((a+i*28)%360)+",55%,55%,.10)");gl.addColorStop(1,"rgba(0,0,0,0)");ctx.fillStyle=gl;ctx.fillRect(0,0,w,h);}
+    ctx.fillStyle="rgba(216,179,106,.9)";ctx.fillRect(w*.08,h*.08,w*.16,5);
+    ctx.font="700 34px Inter,Arial,sans-serif";ctx.fillStyle="rgba(245,247,250,.88)";ctx.fillText("THE INNER EDGE",w*.08,h*.14);
+    if(caption){
+        const max=w*.82;ctx.font="800 44px Inter,Arial,sans-serif";const words=caption.split(/\s+/),lines=[];let line="";
+        for(const word of words){const test=line?line+" "+word:word;if(ctx.measureText(test).width>max&&line){lines.push(line);line=word;}else line=test;}if(line)lines.push(line);
+        const lh=56,bh=lines.length*lh+44,by=h*.63-bh/2;ctx.fillStyle="rgba(0,0,0,.58)";roundedRect(ctx,w*.06,by,w*.88,bh,22);ctx.fill();ctx.textAlign="center";ctx.fillStyle="#fff";lines.forEach(function(l,i){ctx.fillText(l,w/2,by+32+i*lh);});ctx.textAlign="left";
+    }
+    ctx.font="600 20px Inter,Arial,sans-serif";ctx.fillStyle="rgba(245,247,250,.48)";ctx.fillText(topic||"Master your mind. Master your life.",w*.08,h*.91);
+    ctx.fillStyle="rgba(255,255,255,.16)";ctx.fillRect(w*.08,h*.95,w*.84,4);ctx.fillStyle="rgba(216,179,106,.85)";ctx.fillRect(w*.08,h*.95,w*.84*p,4);
+}
+async function renderFinalVideo(){
+    if(!latestVoiceBlob||!latestSRT.trim()){showToast("Generate voice and SRT first.");return;}
+    const button=document.getElementById("renderVideoButton"),status=document.getElementById("videoRenderStatus"),info=document.getElementById("videoRenderInfo"),download=document.getElementById("downloadVideoButton"),audio=document.getElementById("voiceAudio"),preview=document.getElementById("renderedVideo");
+    if(!audio||!preview||!window.MediaRecorder){showToast("This browser does not support video rendering.");return;}
+    const duration=Number(audio.duration);if(!Number.isFinite(duration)||duration<=0){showToast("Wait for the voice audio to finish loading, then render again.");return;}
+    button.disabled=true;if(download)download.disabled=true;if(status){status.textContent="Rendering";status.className="pill draft";}if(info)info.textContent="Rendering narration, animated visuals and burned-in SRT captions...";
+    try{
+        const w=720,h=1280,fps=30,canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;const ctx=canvas.getContext("2d"),stream=canvas.captureStream(fps);
+        if(!renderAudioContext){renderAudioContext=new AudioContext();renderAudioSource=renderAudioContext.createMediaElementSource(audio);}
+        const destination=renderAudioContext.createMediaStreamDestination();renderAudioSource.connect(destination);renderAudioSource.connect(renderAudioContext.destination);
+        const combined=new MediaStream([...stream.getVideoTracks(),...destination.stream.getAudioTracks()]);
+        const candidates=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"],mime=candidates.find(function(x){return MediaRecorder.isTypeSupported(x);});if(!mime)throw new Error("No supported video recording format was found.");
+        const recorder=new MediaRecorder(combined,{mimeType:mime,videoBitsPerSecond:5000000}),chunks=[];recorder.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data);};
+        const entries=parseSRT(latestSRT),topic=document.getElementById("voiceProjectName")?.textContent||"The Inner Edge";let animationId;
+        function draw(){drawVideoFrame(ctx,w,h,audio.currentTime||0,duration,getActiveSubtitle(entries,audio.currentTime||0),topic);if(!audio.paused&&!audio.ended)animationId=requestAnimationFrame(draw);}
+        await renderAudioContext.resume();audio.currentTime=0;recorder.start(250);draw();await audio.play();
+        await new Promise(function(resolve){audio.addEventListener("ended",resolve,{once:true});});
+        cancelAnimationFrame(animationId);drawVideoFrame(ctx,w,h,duration,"",topic);recorder.stop();await new Promise(function(resolve){recorder.onstop=resolve;});combined.getTracks().forEach(function(track){track.stop();});
+        renderedVideoBlob=new Blob(chunks,{type:mime});if(renderedVideoUrl)URL.revokeObjectURL(renderedVideoUrl);renderedVideoUrl=URL.createObjectURL(renderedVideoBlob);preview.src=renderedVideoUrl;preview.load();
+        if(download)download.disabled=false;if(status){status.textContent="Ready";status.className="pill ready";}if(info)info.textContent="Video rendered successfully. "+formatBytes(renderedVideoBlob.size)+" WebM file ready.";showToast("Final video rendered.");
+    }catch(error){console.error("Video render error:",error);if(status){status.textContent="Error";status.className="pill draft";}if(info)info.textContent=error.message||"Video rendering failed.";showToast("Video rendering failed.");}
+    finally{button.disabled=false;}
+}
+function downloadRenderedVideo(){if(!renderedVideoBlob){showToast("Render the final video first.");return;}const link=document.createElement("a");link.href=renderedVideoUrl;link.download="the-inner-edge-final-video.webm";document.body.appendChild(link);link.click();link.remove();showToast("Video download started.");}
+function updateVideoRendererState(){const b=document.getElementById("renderVideoButton");if(b)b.disabled=!(latestVoiceBlob&&latestSRT.trim());}
 
 
 /* =========================================================
