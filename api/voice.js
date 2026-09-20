@@ -186,8 +186,10 @@ export default async function handler(req, res) {
         throw new Error("ElevenLabs is not configured.");
       }
 
+      // Use MP3 for browser playback. Raw PCM is intended for audio pipelines;
+      // MP3 is much more reliable across Android browsers and long narrations.
       const endpoint =
-        `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=pcm_24000`;
+        `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`;
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -216,8 +218,10 @@ export default async function handler(req, res) {
         engine: "ElevenLabs",
         voice: voiceId,
         audio: bytes.toString("base64"),
-        sampleRate: 24000,
-        channels: 1
+        audioFormat: "mp3",
+        mimeType: "audio/mpeg",
+        sampleRate: 44100,
+        channels: 2
       };
     }
 
