@@ -4707,23 +4707,40 @@ async function renderFinalVideo(){
                 new (window.AudioContext||window.webkitAudioContext)();
         }
 
-        if(!renderAudioSource){
-            renderAudioSource=
-                renderAudioContext.createMediaElementSource(audio);
-
-            renderAudioSource.connect(renderAudioContext.destination);
+        /*
+          Render audio from a decoded AudioBuffer instead of routing the
+          HTMLAudioElement through MediaElementSource. On Android, the
+          MediaElementSource path can stop/capture only the first few seconds
+          even though the original MP3 plays completely in the audio element.
+        */
+        if(renderAudioContext.state==="suspended"){
+            await renderAudioContext.resume();
         }
 
-        if(!renderAudioDestination){
-            renderAudioDestination=
-                renderAudioContext.createMediaStreamDestination();
+        const audioBytes=await latestVoiceBlob.arrayBuffer();
+        const audioBuffer=await renderAudioContext.decodeAudioData(audioBytes.slice(0));
+
+        if(!audioBuffer || !audioBuffer.duration){
+            throw new Error("Narration audio could not be decoded for video rendering.");
         }
 
-        try{
-            renderAudioSource.disconnect(renderAudioDestination);
-        }catch(error){}
+        duration=audioBuffer.duration;
 
-        renderAudioSource.connect(renderAudioDestination);
+        if(renderAudioDestination){
+            try{
+                renderAudioDestination.disconnect();
+            }catch(error){}
+        }
+
+        renderAudioDestination=
+            renderAudioContext.createMediaStreamDestination();
+
+        const renderSource=
+            renderAudioContext.createBufferSource();
+
+        renderSource.buffer=audioBuffer;
+        renderSource.connect(renderAudioContext.destination);
+        renderSource.connect(renderAudioDestination);
 
         const combined=new MediaStream([
             ...stream.getVideoTracks(),
@@ -4800,45 +4817,36 @@ async function renderFinalVideo(){
             }
         }
 
-        if(renderAudioContext.state==="suspended"){
-            await renderAudioContext.resume();
-        }
-
         try{audio.pause();}catch(error){}
         audio.currentTime=0;
 
         /*
-          IMPORTANT:
-          Start the recorder BEFORE audio playback, then continuously
-          render frames while the audio is actually playing.
-          The old renderer called draw() before audio.play(), so its
-          render loop never started on mobile.
+          Start recording before the decoded audio buffer starts.
+          The render clock is tied to elapsed audio-buffer time, so the
+          exported video cannot silently fall back to a short media-element
+          duration on Android.
         */
         recorder.start(250);
 
         await wait(150);
 
-        try{
-            await audio.play();
-        }catch(error){
-            recorder.stop();
-            throw new Error("Narration could not start: "+error.message);
-        }
-
-        const startedAt=performance.now();
+        const renderStartedAt=performance.now();
         let lastFrame=0;
 
+        renderSource.start(0);
+
         while(
-            !audio.ended &&
-            audio.currentTime < duration+0.15 &&
-            performance.now()-startedAt < (duration+10)*1000
+            performance.now()-renderStartedAt < (duration+0.25)*1000
         ){
             const now=performance.now();
 
             if(now-lastFrame >= 1000/FPS){
                 lastFrame=now;
 
-                const t=Math.min(duration,audio.currentTime);
+                const t=Math.min(
+                    duration,
+                    Math.max(0,(performance.now()-renderStartedAt)/1000)
+                );
                 const item=currentScene(t);
 
                 await prepareScene(item,t);
@@ -4858,6 +4866,7 @@ async function renderFinalVideo(){
             await wait(12);
         }
 
+        try{renderSource.stop();}catch(error){}
         try{audio.pause();}catch(error){}
 
         /*
