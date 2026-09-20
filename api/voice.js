@@ -21,6 +21,8 @@ export default async function handler(req, res) {
         : req.body || {};
 
     const text = String(body.text || "").trim();
+    const requestedEngine = String(body.engine || "auto").toLowerCase();
+    const requestedVoice = String(body.voice || "en-US-GuyNeural");
 
     if (!text) {
       return res.status(400).json({
@@ -36,100 +38,306 @@ export default async function handler(req, res) {
       });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const allowed = new Set([
+      "auto",
+      "azure",
+      "google",
+      "edge",
+      "elevenlabs",
+      "gemini",
+      "local"
+    ]);
 
-    if (!apiKey) {
-      return res.status(500).json({
-        ok: false,
-        error: "GEMINI_API_KEY is not configured in Vercel."
+    const engine =
+      allowed.has(requestedEngine)
+        ? requestedEngine
+        : "auto";
+
+    const profileToAzureVoice = {
+      "professional-male": "en-US-GuyNeural",
+      "professional-female": "en-US-JennyNeural",
+      "calm-documentary": "en-US-AriaNeural",
+      "energetic-narrator": "en-US-DavisNeural"
+    };
+
+    const profileToGoogleVoice = {
+      "professional-male": "en-US-Neural2-D",
+      "professional-female": "en-US-Neural2-F",
+      "calm-documentary": "en-US-Neural2-J",
+      "energetic-narrator": "en-US-Neural2-A"
+    };
+
+    async function azureTTS() {
+      const key = process.env.AZURE_SPEECH_KEY;
+      const region = process.env.AZURE_SPEECH_REGION;
+
+      if (!key || !region) {
+        throw new Error("Azure Speech is not configured.");
+      }
+
+      const voice =
+        profileToAzureVoice[String(body.profile || "").toLowerCase()] ||
+        requestedVoice ||
+        "en-US-GuyNeural";
+
+      const endpoint =
+        `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
+
+      const escaped = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+
+      const ssml =
+        `<speak version="1.0" xml:lang="en-US"><voice name="${voice}">${escaped}</voice></speak>`;
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Ocp-Apim-Subscription-Key": key,
+          "Content-Type": "application/ssml+xml",
+          "X-Microsoft-OutputFormat": "raw-24khz-16bit-mono-pcm",
+          "User-Agent": "The-Inner-Edge"
+        },
+        body: ssml
       });
+
+      if (!response.ok) {
+        const details = await response.text();
+        throw new Error(`Azure Speech ${response.status}: ${details.slice(0, 500)}`);
+      }
+
+      const bytes = Buffer.from(await response.arrayBuffer());
+
+      if (!bytes.length) {
+        throw new Error("Azure returned empty audio.");
+      }
+
+      return {
+        engine: "Microsoft Azure Speech",
+        voice,
+        audio: bytes.toString("base64"),
+        sampleRate: 24000,
+        channels: 1
+      };
     }
 
-    console.log("GEMINI TTS START", {
-      characters: text.length
-    });
+    async function googleTTS() {
+      const key = process.env.GOOGLE_TTS_API_KEY;
 
-    // Use one Gemini TTS request per narration so the Free Tier daily quota
-    // is consumed once instead of once per chunk.
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000);
+      if (!key) {
+        throw new Error("Google Cloud TTS is not configured.");
+      }
 
-    let response;
+      const voice =
+        profileToGoogleVoice[String(body.profile || "").toLowerCase()] ||
+        "en-US-Neural2-D";
 
-    try {
-      response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/interactions",
+      const response = await fetch(
+        `https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(key)}`,
         {
           method: "POST",
           headers: {
-            "x-goog-api-key": apiKey,
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "gemini-3.1-flash-tts-preview",
-            input: text,
-            response_format: {
-              type: "audio"
+            input: { text },
+            voice: {
+              languageCode: "en-US",
+              name: voice
             },
-            generation_config: {
-              speech_config: [
-                {
-                  voice: "Kore"
-                }
-              ]
+            audioConfig: {
+              audioEncoding: "LINEAR16",
+              sampleRateHertz: 24000
             }
-          }),
-          signal: controller.signal
+          })
         }
       );
-    } finally {
-      clearTimeout(timeout);
-    }
 
-    const result = await response.json();
+      const result = await response.json();
 
-    if (!response.ok) {
-      const details =
-        result?.error?.message ||
-        result?.message ||
-        "Gemini TTS API request failed.";
-
-      throw new Error(details);
-    }
-
-    const audioItems = (result?.steps || [])
-      .flatMap(step =>
-        Array.isArray(step?.content) ? step.content : []
-      )
-      .filter(item => item?.type === "audio" && item?.data);
-
-    if (!audioItems.length) {
-      throw new Error("Gemini returned no audio.");
-    }
-
-    const mimeType =
-      audioItems[0]?.mime_type ||
-      "audio/l16; rate=24000; channels=1";
-
-    const sampleRate =
-      Number(audioItems[0]?.sample_rate) || 24000;
-
-    const channels =
-      Number(audioItems[0]?.channels) || 1;
-
-    const combinedAudio = (() => {
-      if (audioItems.length === 1) {
-        return audioItems[0].data;
+      if (!response.ok) {
+        throw new Error(
+          result?.error?.message ||
+          `Google Cloud TTS ${response.status}`
+        );
       }
 
-      const decoded = audioItems.map(item => {
-        const binary = Buffer.from(item.data, "base64");
-        return new Uint8Array(
-          binary.buffer,
-          binary.byteOffset,
-          binary.byteLength
-        );
+      if (!result?.audioContent) {
+        throw new Error("Google Cloud TTS returned no audio.");
+      }
+
+      return {
+        engine: "Google Cloud TTS",
+        voice,
+        audio: result.audioContent,
+        sampleRate: 24000,
+        channels: 1
+      };
+    }
+
+    async function elevenLabsTTS() {
+      const key = process.env.ELEVENLABS_API_KEY;
+      const voiceId = process.env.ELEVENLABS_VOICE_ID;
+
+      if (!key || !voiceId) {
+        throw new Error("ElevenLabs is not configured.");
+      }
+
+      const endpoint =
+        `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=pcm_24000`;
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "xi-api-key": key,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          text,
+          model_id: "eleven_multilingual_v2"
+        })
       });
+
+      if (!response.ok) {
+        const details = await response.text();
+        throw new Error(`ElevenLabs ${response.status}: ${details.slice(0, 500)}`);
+      }
+
+      const bytes = Buffer.from(await response.arrayBuffer());
+
+      if (!bytes.length) {
+        throw new Error("ElevenLabs returned empty audio.");
+      }
+
+      return {
+        engine: "ElevenLabs",
+        voice: voiceId,
+        audio: bytes.toString("base64"),
+        sampleRate: 24000,
+        channels: 1
+      };
+    }
+
+    async function remotePCM(endpoint, label) {
+      if (!endpoint) {
+        throw new Error(`${label} is not configured.`);
+      }
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          text,
+          voice: requestedVoice,
+          profile: body.profile || "professional-male"
+        })
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+
+      if (!response.ok) {
+        const details = await response.text();
+        throw new Error(`${label} ${response.status}: ${details.slice(0, 500)}`);
+      }
+
+      if (contentType.includes("application/json")) {
+        const result = await response.json();
+        const audio = result?.audio || result?.audioContent || result?.data;
+
+        if (!audio) {
+          throw new Error(`${label} returned no audio.`);
+        }
+
+        return {
+          engine: label,
+          voice: result?.voice || requestedVoice,
+          audio,
+          sampleRate: Number(result?.sampleRate || 24000),
+          channels: Number(result?.channels || 1)
+        };
+      }
+
+      const bytes = Buffer.from(await response.arrayBuffer());
+
+      if (!bytes.length) {
+        throw new Error(`${label} returned empty audio.`);
+      }
+
+      return {
+        engine: label,
+        voice: requestedVoice,
+        audio: bytes.toString("base64"),
+        sampleRate: 24000,
+        channels: 1
+      };
+    }
+
+    async function geminiTTS() {
+      const apiKey = process.env.GEMINI_API_KEY;
+
+      if (!apiKey) {
+        throw new Error("Gemini TTS is not configured.");
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 120000);
+
+      let response;
+
+      try {
+        response = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/interactions",
+          {
+            method: "POST",
+            headers: {
+              "x-goog-api-key": apiKey,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              model: "gemini-3.1-flash-tts-preview",
+              input: text,
+              response_format: { type: "audio" },
+              generation_config: {
+                speech_config: [{ voice: "Kore" }]
+              }
+            }),
+            signal: controller.signal
+          }
+        );
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result?.error?.message ||
+          result?.message ||
+          "Gemini TTS API request failed."
+        );
+      }
+
+      const audioItems = (result?.steps || [])
+        .flatMap(step =>
+          Array.isArray(step?.content) ? step.content : []
+        )
+        .filter(item => item?.type === "audio" && item?.data);
+
+      if (!audioItems.length) {
+        throw new Error("Gemini returned no audio.");
+      }
+
+      const decoded = audioItems.map(item =>
+        new Uint8Array(
+          Buffer.from(item.data, "base64")
+        )
+      );
 
       const totalBytes = decoded.reduce(
         (sum, bytes) => sum + bytes.length,
@@ -144,44 +352,85 @@ export default async function handler(req, res) {
         offset += bytes.length;
       }
 
-      return Buffer.from(combined).toString("base64");
-    })();
+      return {
+        engine: "Gemini TTS",
+        voice: "Kore",
+        audio: Buffer.from(combined).toString("base64"),
+        sampleRate: Number(audioItems[0]?.sample_rate) || 24000,
+        channels: Number(audioItems[0]?.channels) || 1
+      };
+    }
 
-    console.log("GEMINI TTS AUDIO PARTS", {
-      parts: audioItems.length,
-      totalCharacters: text.length
-    });
+    const providers = {
+      azure: azureTTS,
+      google: googleTTS,
+      edge: () =>
+        remotePCM(process.env.EDGE_TTS_ENDPOINT, "Edge TTS / Docker"),
+      elevenlabs: elevenLabsTTS,
+      gemini: geminiTTS,
+      local: () =>
+        remotePCM(process.env.LOCAL_TTS_ENDPOINT, "Local / Docker TTS")
+    };
 
-    console.log("GEMINI TTS SUCCESS", {
-      characters: text.length,
-      sampleRate,
-      channels,
-      mimeType
-    });
+    const autoOrder = [
+      "azure",
+      "google",
+      "edge",
+      "elevenlabs",
+      "gemini",
+      "local"
+    ];
 
-    return res.status(200).json({
-      ok: true,
-      engine: "Gemini TTS",
-      voice: "Kore",
-      audio: combinedAudio,
-      audioMimeType: mimeType,
-      sampleRate,
-      channels,
-      type: audioItems[0]?.type || "audio"
-    });
+    const order =
+      engine === "auto"
+        ? autoOrder
+        : [engine];
 
-  } catch (error) {
-    console.error("GEMINI TTS FAILURE:", error);
+    const failures = [];
 
-    const details =
-      error?.name === "AbortError"
-        ? "Gemini TTS request timed out."
-        : error?.message || String(error);
+    for (const name of order) {
+      try {
+        const result = await providers[name]();
+
+        console.log("VOICE PROVIDER SUCCESS", {
+          provider: result.engine,
+          characters: text.length
+        });
+
+        return res.status(200).json({
+          ok: true,
+          engine: result.engine,
+          voice: result.voice,
+          audio: result.audio,
+          sampleRate: result.sampleRate,
+          channels: result.channels,
+          type: "audio",
+          fallback: engine === "auto",
+          attempted: name
+        });
+      } catch (error) {
+        const message = error?.message || String(error);
+        failures.push(`${name}: ${message}`);
+        console.error("VOICE PROVIDER FAILED", {
+          provider: name,
+          message
+        });
+      }
+    }
 
     return res.status(502).json({
       ok: false,
-      error: "Gemini TTS generation failed.",
-      details
+      error: "No configured voice engine could generate the narration.",
+      details: failures.join("\n")
+    });
+
+  } catch (error) {
+    console.error("VOICE ROUTER FAILURE:", error);
+
+    return res.status(502).json({
+      ok: false,
+      error: "Voice generation failed.",
+      details: error?.message || String(error)
     });
   }
 }
