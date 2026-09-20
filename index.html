@@ -4612,14 +4612,19 @@ function drawVideoFrame(ctx,w,h,time,duration,caption,sceneTitle,video){
     }
 
     if(caption){
-        const max=w*.82;
-        ctx.font="800 25px Inter,Arial,sans-serif";
+        /*
+          Compact bottom captions:
+          small, readable, unobtrusive, and kept clear of the progress bar.
+        */
+        const max=w*.84;
+        ctx.font="600 14px Inter,Arial,sans-serif";
         const words=caption.split(/\s+/);
         const lines=[];
         let line="";
 
         for(const word of words){
             const test=line?line+" "+word:word;
+
             if(ctx.measureText(test).width>max&&line){
                 lines.push(line);
                 line=word;
@@ -4630,22 +4635,29 @@ function drawVideoFrame(ctx,w,h,time,duration,caption,sceneTitle,video){
 
         if(line)lines.push(line);
 
-        const lh=34;
-        const bh=lines.length*lh+28;
-        const by=h*.64-bh/2;
-
-        ctx.fillStyle="rgba(0,0,0,.68)";
-        roundedRect(ctx,w*.06,by,w*.88,bh,14);
-        ctx.fill();
+        const lh=18;
+        const maxLines=2;
+        const visibleLines=lines.slice(-maxLines);
+        const totalHeight=visibleLines.length*lh;
+        const centerY=h*.84;
 
         ctx.textAlign="center";
-        ctx.fillStyle="#fff";
+        ctx.textBaseline="middle";
 
-        lines.forEach((l,i)=>{
-            ctx.fillText(l,w/2,by+23+i*lh);
+        visibleLines.forEach((l,i)=>{
+            /*
+              Subtle shadow instead of a large caption box, so the stock
+              footage remains visible.
+            */
+            ctx.fillStyle="rgba(0,0,0,.72)";
+            ctx.fillText(l,w/2+1,centerY-totalHeight/2+i*lh+1);
+
+            ctx.fillStyle="rgba(255,255,255,.94)";
+            ctx.fillText(l,w/2,centerY-totalHeight/2+i*lh);
         });
 
         ctx.textAlign="left";
+        ctx.textBaseline="alphabetic";
     }
 
     ctx.font="600 12px Inter,Arial,sans-serif";
