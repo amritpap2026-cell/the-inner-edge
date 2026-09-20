@@ -372,12 +372,15 @@ export default async function handler(req, res) {
         remotePCM(process.env.LOCAL_TTS_ENDPOINT, "Local / Docker TTS")
     };
 
+    // Production fallback order:
+    // 1) ElevenLabs is the primary verified provider.
+    // 2) Gemini is the next API fallback.
+    // 3) Edge/Docker and Local/Docker are reserved for later self-hosted engines.
+    // Azure and Google Cloud are intentionally not in Auto until explicitly configured.
     const autoOrder = [
-      "azure",
-      "google",
-      "edge",
       "elevenlabs",
       "gemini",
+      "edge",
       "local"
     ];
 
