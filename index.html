@@ -4303,63 +4303,266 @@ function copySRT(){
 
 
 /* =========================================================
-   BROWSER VIDEO RENDERER
+   STOCK VIDEO + BROWSER VIDEO RENDERER
 ========================================================= */
 let renderedVideoBlob=null;
 let renderedVideoUrl="";
 let renderAudioSource=null;
 let renderAudioContext=null;
+const VISUAL_ENDPOINT="https://the-inner-edge.vercel.app/api/visuals";
 
 function parseSRT(srt){
     return String(srt||"").trim().split(/\n\s*\n/).map(function(block){
-        const lines=block.split(/\r?\n/); if(lines.length<3)return null;
-        const timing=lines[1].split(" --> "); if(timing.length!==2)return null;
-        function sec(v){const m=v.trim().match(/(\d+):(\d{2}):(\d{2}),(\d{3})/);return m?Number(m[1])*3600+Number(m[2])*60+Number(m[3])+Number(m[4])/1000:0;}
+        const lines=block.split(/\r?\n/);
+        if(lines.length<3)return null;
+        const timing=lines[1].split(" --> ");
+        if(timing.length!==2)return null;
+        function sec(v){
+            const m=v.trim().match(/(\d+):(\d{2}):(\d{2}),(\d{3})/);
+            return m?Number(m[1])*3600+Number(m[2])*60+Number(m[3])+Number(m[4])/1000:0;
+        }
         return {start:sec(timing[0]),end:sec(timing[1]),text:lines.slice(2).join(" ").trim()};
     }).filter(Boolean);
 }
-function getActiveSubtitle(entries,time){for(const e of entries){if(time>=e.start&&time<=e.end)return e.text;}return "";}
-function roundedRect(ctx,x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
-function drawVideoFrame(ctx,w,h,time,duration,caption,topic){
-    const p=duration?Math.min(1,time/duration):0,t=time*.18;
-    const a=210+Math.sin(t)*35,b=35+Math.cos(t*.7)*20;
-    const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,"hsl("+a+",25%,7%)");g.addColorStop(.55,"hsl("+b+",28%,10%)");g.addColorStop(1,"#050608");ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
-    for(let i=0;i<5;i++){const x=w*(.15+i*.2)+Math.sin(t+i)*70,y=h*(.18+i*.16)+Math.cos(t*.8+i)*80,gl=ctx.createRadialGradient(x,y,0,x,y,220);gl.addColorStop(0,"hsla("+((a+i*28)%360)+",55%,55%,.10)");gl.addColorStop(1,"rgba(0,0,0,0)");ctx.fillStyle=gl;ctx.fillRect(0,0,w,h);}
-    ctx.fillStyle="rgba(216,179,106,.9)";ctx.fillRect(w*.08,h*.08,w*.16,5);
-    ctx.font="700 34px Inter,Arial,sans-serif";ctx.fillStyle="rgba(245,247,250,.88)";ctx.fillText("THE INNER EDGE",w*.08,h*.14);
-    if(caption){
-        const max=w*.82;ctx.font="800 44px Inter,Arial,sans-serif";const words=caption.split(/\s+/),lines=[];let line="";
-        for(const word of words){const test=line?line+" "+word:word;if(ctx.measureText(test).width>max&&line){lines.push(line);line=word;}else line=test;}if(line)lines.push(line);
-        const lh=56,bh=lines.length*lh+44,by=h*.63-bh/2;ctx.fillStyle="rgba(0,0,0,.58)";roundedRect(ctx,w*.06,by,w*.88,bh,22);ctx.fill();ctx.textAlign="center";ctx.fillStyle="#fff";lines.forEach(function(l,i){ctx.fillText(l,w/2,by+32+i*lh);});ctx.textAlign="left";
-    }
-    ctx.font="600 20px Inter,Arial,sans-serif";ctx.fillStyle="rgba(245,247,250,.48)";ctx.fillText(topic||"Master your mind. Master your life.",w*.08,h*.91);
-    ctx.fillStyle="rgba(255,255,255,.16)";ctx.fillRect(w*.08,h*.95,w*.84,4);ctx.fillStyle="rgba(216,179,106,.85)";ctx.fillRect(w*.08,h*.95,w*.84*p,4);
+
+function getActiveSubtitle(entries,time){
+    for(const e of entries){if(time>=e.start&&time<=e.end)return e.text;}
+    return "";
 }
+
+function roundedRect(ctx,x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
+}
+
+function sceneDuration(scene,index,total){
+    const m=String(scene?.time||"").match(/(\d+):(\d{2})\s*-\s*(\d+):(\d{2})/);
+    if(m)return Math.max(.5,(Number(m[3])*60+Number(m[4]))-(Number(m[1])*60+Number(m[2])));
+    return 1;
+}
+
+function visualQuery(scene){
+    return String(scene?.visualPrompt||scene?.title||"cinematic psychology")
+        .replace(/\s+/g," ").trim()
+        .replace(/[^a-zA-Z0-9 ,'-]/g," ")
+        .split(" ").filter(Boolean).slice(0,12).join(" ");
+}
+
+async function findVisual(query){
+    const response=await fetch(VISUAL_ENDPOINT+"?q="+encodeURIComponent(query)+"&limit=3");
+    const data=await response.json();
+    if(!response.ok||!data.ok||!data.results?.length){
+        throw new Error(data?.details||data?.error||"No stock video found.");
+    }
+    return data.results[0];
+}
+
+function loadStockVideo(item){
+    return new Promise(function(resolve,reject){
+        const v=document.createElement("video");
+        v.crossOrigin="anonymous";v.muted=true;v.playsInline=true;v.preload="auto";
+        const timer=setTimeout(()=>{v.removeAttribute("src");reject(new Error("Stock clip timeout."));},15000);
+        v.oncanplay=()=>{clearTimeout(timer);resolve(v);};
+        v.onerror=()=>{clearTimeout(timer);reject(new Error("Stock clip could not be loaded."));};
+        v.src=item.url;v.load();
+    });
+}
+
+async function buildVisualTimeline(plan){
+    const scenes=plan?.scenes||[];
+    const timeline=[];let cursor=0;
+    for(let i=0;i<scenes.length;i++){
+        const scene=scenes[i];
+        const duration=sceneDuration(scene,i,scenes.length);
+        const query=visualQuery(scene);
+        let item=null,video=null;
+        try{item=await findVisual(query);video=await loadStockVideo(item);}
+        catch(error){console.warn("Visual fallback for scene "+(i+1)+":",error);}
+        timeline.push({scene,query,item,video,start:cursor,end:cursor+duration});
+        cursor+=duration;
+    }
+    return {timeline,total:cursor};
+}
+
+function drawFallback(ctx,w,h,time,duration){
+    const t=time*.18;
+    const g=ctx.createLinearGradient(0,0,w,h);
+    g.addColorStop(0,"hsl("+((210+Math.sin(t)*35)%360)+",25%,7%)");
+    g.addColorStop(.55,"hsl("+((35+Math.cos(t*.7)*20)%360)+",28%,10%)");
+    g.addColorStop(1,"#050608");
+    ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+}
+
+function drawStock(ctx,video,w,h){
+    if(!video||video.readyState<2)return false;
+    const vw=video.videoWidth||w,vh=video.videoHeight||h;
+    const scale=Math.max(w/vw,h/vh);
+    const dw=vw*scale,dh=vh*scale;
+    ctx.drawImage(video,(w-dw)/2,(h-dh)/2,dw,dh);
+    ctx.fillStyle="rgba(0,0,0,.28)";ctx.fillRect(0,0,w,h);
+    return true;
+}
+
+function drawVideoFrame(ctx,w,h,time,duration,caption,sceneTitle,video){
+    ctx.fillStyle="#050608";ctx.fillRect(0,0,w,h);
+    if(!drawStock(ctx,video,w,h))drawFallback(ctx,w,h,time,duration);
+
+    ctx.fillStyle="rgba(216,179,106,.92)";ctx.fillRect(w*.08,h*.08,w*.16,5);
+    ctx.font="700 34px Inter,Arial,sans-serif";
+    ctx.fillStyle="rgba(245,247,250,.92)";ctx.fillText("THE INNER EDGE",w*.08,h*.14);
+
+    if(sceneTitle){
+        ctx.font="600 17px Inter,Arial,sans-serif";
+        ctx.fillStyle="rgba(245,247,250,.58)";
+        ctx.fillText(String(sceneTitle).toUpperCase().slice(0,42),w*.08,h*.19);
+    }
+
+    if(caption){
+        const max=w*.82;ctx.font="800 44px Inter,Arial,sans-serif";
+        const words=caption.split(/\s+/),lines=[];let line="";
+        for(const word of words){
+            const test=line?line+" "+word:word;
+            if(ctx.measureText(test).width>max&&line){lines.push(line);line=word;}
+            else line=test;
+        }
+        if(line)lines.push(line);
+        const lh=56,bh=lines.length*lh+44,by=h*.64-bh/2;
+        ctx.fillStyle="rgba(0,0,0,.64)";roundedRect(ctx,w*.06,by,w*.88,bh,22);ctx.fill();
+        ctx.textAlign="center";ctx.fillStyle="#fff";
+        lines.forEach((l,i)=>ctx.fillText(l,w/2,by+34+i*lh));
+        ctx.textAlign="left";
+    }
+
+    ctx.font="600 20px Inter,Arial,sans-serif";
+    ctx.fillStyle="rgba(245,247,250,.65)";
+    ctx.fillText("Master your mind. Master your life.",w*.08,h*.91);
+    ctx.fillStyle="rgba(255,255,255,.18)";ctx.fillRect(w*.08,h*.95,w*.84,4);
+    ctx.fillStyle="rgba(216,179,106,.9)";
+    ctx.fillRect(w*.08,h*.95,w*.84*Math.min(1,time/Math.max(.1,duration)),4);
+}
+
 async function renderFinalVideo(){
     if(!latestVoiceBlob||!latestSRT.trim()){showToast("Generate voice and SRT first.");return;}
-    const button=document.getElementById("renderVideoButton"),status=document.getElementById("videoRenderStatus"),info=document.getElementById("videoRenderInfo"),download=document.getElementById("downloadVideoButton"),audio=document.getElementById("voiceAudio"),preview=document.getElementById("renderedVideo");
-    if(!audio||!preview||!window.MediaRecorder){showToast("This browser does not support video rendering.");return;}
-    const duration=Number(audio.duration);if(!Number.isFinite(duration)||duration<=0){showToast("Wait for the voice audio to finish loading, then render again.");return;}
-    button.disabled=true;if(download)download.disabled=true;if(status){status.textContent="Rendering";status.className="pill draft";}if(info)info.textContent="Rendering narration, animated visuals and burned-in SRT captions...";
+    if(!latestProductionPlan?.scenes?.length){showToast("Create the Production Plan first.");showPage("video");return;}
+
+    const button=document.getElementById("renderVideoButton");
+    const status=document.getElementById("videoRenderStatus");
+    const info=document.getElementById("videoRenderInfo");
+    const download=document.getElementById("downloadVideoButton");
+    const audio=document.getElementById("voiceAudio");
+    const preview=document.getElementById("renderedVideo");
+
+    if(!audio||!preview||!window.MediaRecorder){showToast("This browser cannot render video.");return;}
+    const duration=Number(audio.duration);
+    if(!Number.isFinite(duration)||duration<=0){showToast("Wait for the voice audio to load.");return;}
+
+    button.disabled=true;if(download)download.disabled=true;
+    if(status){status.textContent="Finding visuals";status.className="pill draft";}
+    if(info)info.textContent="Searching stock video for each production scene...";
+
     try{
-        const w=720,h=1280,fps=30,canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;const ctx=canvas.getContext("2d"),stream=canvas.captureStream(fps);
-        if(!renderAudioContext){renderAudioContext=new AudioContext();renderAudioSource=renderAudioContext.createMediaElementSource(audio);}
-        const destination=renderAudioContext.createMediaStreamDestination();renderAudioSource.connect(destination);renderAudioSource.connect(renderAudioContext.destination);
-        const combined=new MediaStream([...stream.getVideoTracks(),...destination.stream.getAudioTracks()]);
-        const candidates=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"],mime=candidates.find(function(x){return MediaRecorder.isTypeSupported(x);});if(!mime)throw new Error("No supported video recording format was found.");
-        const recorder=new MediaRecorder(combined,{mimeType:mime,videoBitsPerSecond:5000000}),chunks=[];recorder.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data);};
-        const entries=parseSRT(latestSRT),topic=document.getElementById("voiceProjectName")?.textContent||"The Inner Edge";let animationId;
-        function draw(){drawVideoFrame(ctx,w,h,audio.currentTime||0,duration,getActiveSubtitle(entries,audio.currentTime||0),topic);if(!audio.paused&&!audio.ended)animationId=requestAnimationFrame(draw);}
-        await renderAudioContext.resume();audio.currentTime=0;recorder.start(250);draw();await audio.play();
-        await new Promise(function(resolve){audio.addEventListener("ended",resolve,{once:true});});
-        cancelAnimationFrame(animationId);drawVideoFrame(ctx,w,h,duration,"",topic);recorder.stop();await new Promise(function(resolve){recorder.onstop=resolve;});combined.getTracks().forEach(function(track){track.stop();});
-        renderedVideoBlob=new Blob(chunks,{type:mime});if(renderedVideoUrl)URL.revokeObjectURL(renderedVideoUrl);renderedVideoUrl=URL.createObjectURL(renderedVideoBlob);preview.src=renderedVideoUrl;preview.load();
-        if(download)download.disabled=false;if(status){status.textContent="Ready";status.className="pill ready";}if(info)info.textContent="Video rendered successfully. "+formatBytes(renderedVideoBlob.size)+" WebM file ready.";showToast("Final video rendered.");
-    }catch(error){console.error("Video render error:",error);if(status){status.textContent="Error";status.className="pill draft";}if(info)info.textContent=error.message||"Video rendering failed.";showToast("Video rendering failed.");}
-    finally{button.disabled=false;}
+        const built=await buildVisualTimeline(latestProductionPlan);
+        const timeline=built.timeline,total=built.total;
+        const usable=timeline.filter(x=>x.video).length;
+
+        if(info)info.textContent="Found "+usable+" stock clips. Rendering captions and narration...";
+        if(status)status.textContent="Rendering";
+
+        const canvas=document.createElement("canvas");canvas.width=720;canvas.height=1280;
+        const ctx=canvas.getContext("2d");if(!ctx)throw new Error("Canvas unavailable.");
+        const stream=canvas.captureStream(30);
+
+        if(!renderAudioContext){
+            renderAudioContext=new AudioContext();
+            renderAudioSource=renderAudioContext.createMediaElementSource(audio);
+        }
+        const destination=renderAudioContext.createMediaStreamDestination();
+        renderAudioSource.connect(destination);
+        renderAudioSource.connect(renderAudioContext.destination);
+
+        const combined=new MediaStream([
+            ...stream.getVideoTracks(),...destination.stream.getAudioTracks()
+        ]);
+
+        const formats=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
+        const mime=formats.find(x=>MediaRecorder.isTypeSupported(x));
+        if(!mime)throw new Error("No supported browser video format.");
+
+        const recorder=new MediaRecorder(combined,{mimeType:mime,videoBitsPerSecond:5000000});
+        const chunks=[];
+        recorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data);};
+
+        const entries=parseSRT(latestSRT);
+        let raf=0;
+
+        function currentScene(t){
+            const planTime=(t/duration)*total;
+            return timeline.find(x=>planTime>=x.start&&planTime<x.end)||timeline[timeline.length-1];
+        }
+
+        async function draw(){
+            const t=audio.currentTime||0;
+            const item=currentScene(t);
+            let localTime=0;
+            if(item){
+                localTime=Math.max(0,(t/duration)*total-item.start);
+                if(item.video){
+                    try{
+                        if(localTime<Math.max(.1,item.video.duration||999))
+                            item.video.currentTime=localTime;
+                    }catch(e){}
+                    try{await item.video.play();}catch(e){}
+                }
+            }
+            drawVideoFrame(ctx,720,1280,t,duration,getActiveSubtitle(entries,t),item?.scene?.title||"",item?.video||null);
+            if(!audio.paused&&!audio.ended)raf=requestAnimationFrame(()=>draw());
+        }
+
+        await renderAudioContext.resume();
+        audio.currentTime=0;
+        recorder.start(250);
+        await draw();
+        await audio.play();
+
+        await new Promise(resolve=>audio.addEventListener("ended",resolve,{once:true}));
+        cancelAnimationFrame(raf);
+        recorder.stop();
+        await new Promise(resolve=>recorder.addEventListener("stop",resolve,{once:true}));
+
+        combined.getTracks().forEach(t=>t.stop());
+        timeline.forEach(x=>{if(x.video){x.video.pause();x.video.removeAttribute("src");x.video.load();}});
+
+        renderedVideoBlob=new Blob(chunks,{type:mime});
+        if(renderedVideoUrl)URL.revokeObjectURL(renderedVideoUrl);
+        renderedVideoUrl=URL.createObjectURL(renderedVideoBlob);
+        preview.src=renderedVideoUrl;preview.load();
+        if(download)download.disabled=false;
+
+        if(status){status.textContent="Ready";status.className="pill ready";}
+        if(info)info.textContent="Final WebM ready: "+formatBytes(renderedVideoBlob.size)+" • "+usable+"/"+timeline.length+" stock scenes used.";
+        showToast("Final video rendered.");
+    }catch(error){
+        console.error("Video render error:",error);
+        if(status){status.textContent="Error";status.className="pill draft";}
+        if(info)info.textContent=error.message||"Video rendering failed.";
+        showToast("Video rendering failed.");
+    }finally{button.disabled=false;}
 }
-function downloadRenderedVideo(){if(!renderedVideoBlob){showToast("Render the final video first.");return;}const link=document.createElement("a");link.href=renderedVideoUrl;link.download="the-inner-edge-final-video.webm";document.body.appendChild(link);link.click();link.remove();showToast("Video download started.");}
-function updateVideoRendererState(){const b=document.getElementById("renderVideoButton");if(b)b.disabled=!(latestVoiceBlob&&latestSRT.trim());}
+
+function downloadRenderedVideo(){
+    if(!renderedVideoBlob){showToast("Render the final video first.");return;}
+    const link=document.createElement("a");
+    link.href=renderedVideoUrl;link.download="the-inner-edge-final-video.webm";
+    document.body.appendChild(link);link.click();link.remove();
+    showToast("Video download started.");
+}
+
+function updateVideoRendererState(){
+    const b=document.getElementById("renderVideoButton");
+    if(b)b.disabled=!(latestVoiceBlob&&latestSRT.trim()&&latestProductionPlan?.scenes?.length);
+}
 
 
 /* =========================================================
