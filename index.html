@@ -4209,16 +4209,35 @@ async function generateVoice(){
             audio.load();
         }
 
-        const estimatedDuration =
-            Math.max(
-                3,
-                data.text.trim().split(/\s+/).filter(Boolean).length / 2.45
-            );
+        /*
+          Build subtitles from the ACTUAL generated audio duration.
+          Do not estimate narration length from word count: ElevenLabs
+          speaking speed varies with punctuation, pauses and voice style,
+          so an estimate can make subtitles finish much earlier than audio.
+        */
+        try{
+            const subtitleContext =
+                new (window.AudioContext||window.webkitAudioContext)();
 
-        latestSRT = buildSRTFromScript(
-            data.text,
-            estimatedDuration
-        );
+            const audioBytes = await latestVoiceBlob.arrayBuffer();
+            const decoded = await subtitleContext.decodeAudioData(audioBytes.slice(0));
+
+            if(decoded && Number.isFinite(decoded.duration) && decoded.duration > 0){
+                latestSRT = buildSRTFromScript(
+                    data.text,
+                    decoded.duration
+                );
+            }
+
+            try{ await subtitleContext.close(); }catch(error){}
+        }catch(error){
+            console.warn("Could not decode narration for exact subtitle timing:", error);
+
+            /*
+              Keep the metadata listener as a browser fallback. It will
+              replace this only when real audio duration is available.
+            */
+        }
 
         const titleSlug =
             String(data.topic)
