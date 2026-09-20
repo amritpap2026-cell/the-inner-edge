@@ -1,5 +1,3 @@
-import { EdgeTTS, createSRT } from "@travisvn/edge-tts";
-
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -38,61 +36,127 @@ export default async function handler(req, res) {
       });
     }
 
-    const voice = body.voice || "en-US-GuyNeural";
+    const apiKey = process.env.GEMINI_API_KEY;
 
-    console.log("EDGE TTS START", {
-      voice,
+    if (!apiKey) {
+      return res.status(500).json({
+        ok: false,
+        error: "GEMINI_API_KEY is not configured in Vercel."
+      });
+    }
+
+    console.log("GEMINI TTS START", {
       characters: text.length
     });
 
-    const tts = new EdgeTTS(text, voice);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
 
-    console.log("EDGE TTS OBJECT CREATED");
-    console.log("EDGE TTS SYNTHESIS STARTING");
+    let response;
 
-    const result = await tts.synthesize();
-
-    console.log("EDGE TTS SYNTHESIS FINISHED");
-
-    if (!result || !result.audio) {
-      throw new Error("Edge TTS returned no audio.");
+    try {
+      response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/interactions",
+        {
+          method: "POST",
+          headers: {
+            "x-goog-api-key": apiKey,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "gemini-3.1-flash-tts-preview",
+            input: text,
+            response_format: {
+              type: "audio"
+            },
+            generation_config: {
+              speech_config: [
+                {
+                  voice: "Kore"
+                }
+              ]
+            }
+          }),
+          signal: controller.signal
+        }
+      );
+    } finally {
+      clearTimeout(timeout);
     }
 
-    const audioBuffer = Buffer.from(
-      await result.audio.arrayBuffer()
-    );
+    const result = await response.json();
 
-    if (!audioBuffer.length) {
-      throw new Error("Edge TTS returned empty audio.");
+    if (!response.ok) {
+      console.error("GEMINI TTS API ERROR", {
+        status: response.status,
+        result
+      });
+
+      const details =
+        result?.error?.message ||
+        result?.message ||
+        "Gemini TTS API request failed.";
+
+      return res.status(502).json({
+        ok: false,
+        error: "Gemini TTS generation failed.",
+        details
+      });
     }
 
-    const subtitles = createSRT(result.subtitle || []);
+    const audio =
+      result?.steps?.[0]?.content?.find(
+        item => item?.type === "audio" && item?.data
+      );
 
-    console.log("EDGE TTS SUCCESS", {
-      bytes: audioBuffer.length,
-      words: result.subtitle?.length || 0
+    if (!audio?.data) {
+      console.error("GEMINI TTS NO AUDIO", result);
+
+      return res.status(502).json({
+        ok: false,
+        error: "Gemini TTS returned no audio."
+      });
+    }
+
+    const mimeType =
+      audio.mime_type || "audio/l16; rate=24000; channels=1";
+
+    const sampleRate =
+      Number(audio.sample_rate) || 24000;
+
+    const channels =
+      Number(audio.channels) || 1;
+
+    console.log("GEMINI TTS SUCCESS", {
+      characters: text.length,
+      sampleRate,
+      channels,
+      mimeType
     });
 
     return res.status(200).json({
       ok: true,
-      engine: "Microsoft Edge TTS",
-      voice,
-      audio: audioBuffer.toString("base64"),
-      audioMimeType: "audio/mpeg",
-      subtitles,
-      subtitleFormat: "srt",
-      size: audioBuffer.length,
-      words: result.subtitle?.length || 0
+      engine: "Gemini TTS",
+      voice: "Kore",
+      audio: audio.data,
+      audioMimeType: mimeType,
+      sampleRate,
+      channels,
+      type: audio.type || "audio"
     });
 
   } catch (error) {
-    console.error("EDGE TTS FAILURE:", error);
+    console.error("GEMINI TTS FAILURE:", error);
+
+    const details =
+      error?.name === "AbortError"
+        ? "Gemini TTS request timed out."
+        : error?.message || String(error);
 
     return res.status(502).json({
       ok: false,
-      engine: "Microsoft Edge TTS",
-      error: "Edge TTS generation failed.",
-      details: error?.message || String(error)
+      error: "Gemini TTS generation failed.",
+      details
     });
   }
 }
