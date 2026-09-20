@@ -104,12 +104,17 @@ export default async function handler(req, res) {
       });
     }
 
-    const audio =
-      result?.steps?.[0]?.content?.find(
-        item => item?.type === "audio" && item?.data
-      );
+    /*
+      Gemini can return audio in more than one audio content item for
+      longer narration. The previous implementation kept only the first
+      item, which could make long scripts stop part-way through.
+      Collect every PCM audio item and concatenate the raw PCM bytes.
+    */
+    const audioItems = (result?.steps || [])
+      .flatMap(step => Array.isArray(step?.content) ? step.content : [])
+      .filter(item => item?.type === "audio" && item?.data);
 
-    if (!audio?.data) {
+    if (!audioItems.length) {
       console.error("GEMINI TTS NO AUDIO", result);
 
       return res.status(502).json({
@@ -119,13 +124,49 @@ export default async function handler(req, res) {
     }
 
     const mimeType =
-      audio.mime_type || "audio/l16; rate=24000; channels=1";
+      audioItems[0]?.mime_type ||
+      "audio/l16; rate=24000; channels=1";
 
     const sampleRate =
-      Number(audio.sample_rate) || 24000;
+      Number(audioItems[0]?.sample_rate) || 24000;
 
     const channels =
-      Number(audio.channels) || 1;
+      Number(audioItems[0]?.channels) || 1;
+
+    const combinedAudio = (() => {
+      if (audioItems.length === 1) {
+        return audioItems[0].data;
+      }
+
+      const decoded = audioItems.map(item => {
+        const binary = Buffer.from(item.data, "base64");
+        return new Uint8Array(
+          binary.buffer,
+          binary.byteOffset,
+          binary.byteLength
+        );
+      });
+
+      const totalBytes = decoded.reduce(
+        (sum, bytes) => sum + bytes.length,
+        0
+      );
+
+      const combined = new Uint8Array(totalBytes);
+      let offset = 0;
+
+      for (const bytes of decoded) {
+        combined.set(bytes, offset);
+        offset += bytes.length;
+      }
+
+      return Buffer.from(combined).toString("base64");
+    })();
+
+    console.log("GEMINI TTS AUDIO PARTS", {
+      parts: audioItems.length,
+      totalCharacters: text.length
+    });
 
     console.log("GEMINI TTS SUCCESS", {
       characters: text.length,
@@ -138,11 +179,11 @@ export default async function handler(req, res) {
       ok: true,
       engine: "Gemini TTS",
       voice: "Kore",
-      audio: audio.data,
+      audio: combinedAudio,
       audioMimeType: mimeType,
       sampleRate,
       channels,
-      type: audio.type || "audio"
+      type: audioItems[0]?.type || "audio"
     });
 
   } catch (error) {
