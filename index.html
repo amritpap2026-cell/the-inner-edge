@@ -3741,6 +3741,7 @@ Rules:
     try {
         const rawText = await callAI(prompt);
         const plan = parseProductionPlan(rawText, fallback);
+        latestProductionPlan = plan;
         renderProductionPlan(plan);
 
         if (status) status.textContent = "Ready";
@@ -3757,6 +3758,7 @@ Rules:
         showToast("Production plan generated.");
     } catch (error) {
         console.error(error);
+        latestProductionPlan = fallback;
         renderProductionPlan(fallback);
 
         if (status) status.textContent = "Fallback ready";
@@ -3790,6 +3792,8 @@ function copyProductionPlan(){
 /* =========================================================
    VOICE GENERATOR — GEMINI TTS VIA N8N
 ========================================================= */
+
+let latestProductionPlan = null;
 
 const VOICE_ENDPOINT = "https://the-inner-edge.vercel.app/api/voice";
 
