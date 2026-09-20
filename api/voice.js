@@ -49,144 +49,63 @@ export default async function handler(req, res) {
       characters: text.length
     });
 
-    /*
-      Long Gemini TTS requests can return only a short initial audio segment.
-      Split longer narration into small sentence-aware chunks and synthesize
-      each chunk separately, then concatenate the PCM data below. This keeps
-      long narration complete on both mobile and desktop.
-    */
-    function splitTextForTTS(value, maxChars = 420) {
-      const sentences = String(value)
-        .replace(/\s+/g, " ")
-        .trim()
-        .split(/(?<=[.!?])\s+/)
-        .filter(Boolean);
+    // Use one Gemini TTS request per narration so the Free Tier daily quota
+    // is consumed once instead of once per chunk.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
 
-      const chunks = [];
-      let current = "";
+    let response;
 
-      for (const sentence of sentences) {
-        if (!current) {
-          current = sentence;
-          continue;
+    try {
+      response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/interactions",
+        {
+          method: "POST",
+          headers: {
+            "x-goog-api-key": apiKey,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "gemini-3.1-flash-tts-preview",
+            input: text,
+            response_format: {
+              type: "audio"
+            },
+            generation_config: {
+              speech_config: [
+                {
+                  voice: "Kore"
+                }
+              ]
+            }
+          }),
+          signal: controller.signal
         }
-
-        if ((current + " " + sentence).length <= maxChars) {
-          current += " " + sentence;
-        } else {
-          chunks.push(current);
-          current = sentence;
-        }
-      }
-
-      if (current) chunks.push(current);
-
-      const finalChunks = [];
-      for (const chunk of chunks) {
-        if (chunk.length <= maxChars) {
-          finalChunks.push(chunk);
-          continue;
-        }
-
-        for (let i = 0; i < chunk.length; i += maxChars) {
-          finalChunks.push(chunk.slice(i, i + maxChars).trim());
-        }
-      }
-
-      return finalChunks.filter(Boolean);
+      );
+    } finally {
+      clearTimeout(timeout);
     }
 
-    const textChunks = splitTextForTTS(text);
-    
-    console.log("GEMINI TTS CHUNKS", {
-      chunks: textChunks.length,
-      characters: text.length
-    });
+    const result = await response.json();
 
-    /*
-      Generate chunks in parallel. Sequential generation can exceed Vercel's
-      function lifetime for longer scripts even though each Gemini request is
-      fast. The returned PCM chunks are joined in their original text order.
-    */
-    const chunkResults = await Promise.all(
-      textChunks.map(async (chunk, index) => {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 45000);
+    if (!response.ok) {
+      const details =
+        result?.error?.message ||
+        result?.message ||
+        "Gemini TTS API request failed.";
 
-        try {
-          const response = await fetch(
-            "https://generativelanguage.googleapis.com/v1beta/interactions",
-            {
-              method: "POST",
-              headers: {
-                "x-goog-api-key": apiKey,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                model: "gemini-3.1-flash-tts-preview",
-                input: chunk,
-                response_format: {
-                  type: "audio"
-                },
-                generation_config: {
-                  speech_config: [
-                    {
-                      voice: "Kore"
-                    }
-                  ]
-                }
-              }),
-              signal: controller.signal
-            }
-          );
+      throw new Error(details);
+    }
 
-          const result = await response.json();
+    const audioItems = (result?.steps || [])
+      .flatMap(step =>
+        Array.isArray(step?.content) ? step.content : []
+      )
+      .filter(item => item?.type === "audio" && item?.data);
 
-          if (!response.ok) {
-            const details =
-              result?.error?.message ||
-              result?.message ||
-              "Gemini TTS API request failed.";
-
-            throw new Error(
-              "Chunk " + (index + 1) + "/" + textChunks.length + ": " + details
-            );
-          }
-
-          const items = (result?.steps || [])
-            .flatMap(step =>
-              Array.isArray(step?.content) ? step.content : []
-            )
-            .filter(item => item?.type === "audio" && item?.data);
-
-          if (!items.length) {
-            throw new Error(
-              "Chunk " + (index + 1) + "/" + textChunks.length +
-              ": Gemini returned no audio."
-            );
-          }
-
-          console.log("GEMINI TTS CHUNK SUCCESS", {
-            chunk: index + 1,
-            totalChunks: textChunks.length,
-            characters: chunk.length,
-            audioParts: items.length
-          });
-
-          return {
-            index,
-            items
-          };
-        } finally {
-          clearTimeout(timeout);
-        }
-      })
-    );
-
-    chunkResults.sort((a, b) => a.index - b.index);
-
-    const audioItems = chunkResults.flatMap(item => item.items);
-
+    if (!audioItems.length) {
+      throw new Error("Gemini returned no audio.");
+    }
 
     const mimeType =
       audioItems[0]?.mime_type ||
