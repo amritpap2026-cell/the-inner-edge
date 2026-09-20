@@ -97,96 +97,95 @@ export default async function handler(req, res) {
     }
 
     const textChunks = splitTextForTTS(text);
-    const allAudioItems = [];
-
+    
     console.log("GEMINI TTS CHUNKS", {
       chunks: textChunks.length,
       characters: text.length
     });
 
-    for (let index = 0; index < textChunks.length; index++) {
-      const chunk = textChunks[index];
+    /*
+      Generate chunks in parallel. Sequential generation can exceed Vercel's
+      function lifetime for longer scripts even though each Gemini request is
+      fast. The returned PCM chunks are joined in their original text order.
+    */
+    const chunkResults = await Promise.all(
+      textChunks.map(async (chunk, index) => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 45000);
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 90000);
-
-      let response;
-
-      try {
-        response = await fetch(
-          "https://generativelanguage.googleapis.com/v1beta/interactions",
-          {
-            method: "POST",
-            headers: {
-              "x-goog-api-key": apiKey,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              model: "gemini-3.1-flash-tts-preview",
-              input: chunk,
-              response_format: {
-                type: "audio"
+        try {
+          const response = await fetch(
+            "https://generativelanguage.googleapis.com/v1beta/interactions",
+            {
+              method: "POST",
+              headers: {
+                "x-goog-api-key": apiKey,
+                "Content-Type": "application/json"
               },
-              generation_config: {
-                speech_config: [
-                  {
-                    voice: "Kore"
-                  }
-                ]
-              }
-            }),
-            signal: controller.signal
+              body: JSON.stringify({
+                model: "gemini-3.1-flash-tts-preview",
+                input: chunk,
+                response_format: {
+                  type: "audio"
+                },
+                generation_config: {
+                  speech_config: [
+                    {
+                      voice: "Kore"
+                    }
+                  ]
+                }
+              }),
+              signal: controller.signal
+            }
+          );
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            const details =
+              result?.error?.message ||
+              result?.message ||
+              "Gemini TTS API request failed.";
+
+            throw new Error(
+              "Chunk " + (index + 1) + "/" + textChunks.length + ": " + details
+            );
           }
-        );
-      } finally {
-        clearTimeout(timeout);
-      }
 
-      const result = await response.json();
+          const items = (result?.steps || [])
+            .flatMap(step =>
+              Array.isArray(step?.content) ? step.content : []
+            )
+            .filter(item => item?.type === "audio" && item?.data);
 
-      if (!response.ok) {
-        console.error("GEMINI TTS API ERROR", {
-          chunk: index + 1,
-          status: response.status,
-          result
-        });
+          if (!items.length) {
+            throw new Error(
+              "Chunk " + (index + 1) + "/" + textChunks.length +
+              ": Gemini returned no audio."
+            );
+          }
 
-        const details =
-          result?.error?.message ||
-          result?.message ||
-          "Gemini TTS API request failed.";
+          console.log("GEMINI TTS CHUNK SUCCESS", {
+            chunk: index + 1,
+            totalChunks: textChunks.length,
+            characters: chunk.length,
+            audioParts: items.length
+          });
 
-        return res.status(502).json({
-          ok: false,
-          error: "Gemini TTS generation failed.",
-          details,
-          chunk: index + 1,
-          totalChunks: textChunks.length
-        });
-      }
+          return {
+            index,
+            items
+          };
+        } finally {
+          clearTimeout(timeout);
+        }
+      })
+    );
 
-      const items = (result?.steps || [])
-        .flatMap(step => Array.isArray(step?.content) ? step.content : [])
-        .filter(item => item?.type === "audio" && item?.data);
+    chunkResults.sort((a, b) => a.index - b.index);
 
-      if (!items.length) {
-        return res.status(502).json({
-          ok: false,
-          error: "Gemini TTS returned no audio.",
-          chunk: index + 1,
-          totalChunks: textChunks.length
-        });
-      }
-
-      allAudioItems.push(...items);
-
-      console.log("GEMINI TTS CHUNK SUCCESS", {
-        chunk: index + 1,
-        totalChunks: textChunks.length,
-        characters: chunk.length,
-        audioParts: items.length
-      });
-    }
+    const audioItems = chunkResults.flatMap(item => item.items);
 
     const audioItems = allAudioItems;
 
