@@ -4152,15 +4152,42 @@ async function generateVoice(){
         const audio = document.getElementById("voiceAudio");
 
         if(audio){
+            audio.onerror = function(){
+                console.error("Voice audio playback error:", audio.error);
+            };
+            audio.onloadedmetadata = function(){
+                const realDuration = Number(audio.duration);
+                if(Number.isFinite(realDuration) && realDuration > 0){
+                    latestSRT = buildSRTFromScript(data.text, realDuration);
+                    if(subtitles){
+                        subtitles.textContent =
+                            `Timed SRT subtitles generated from the script. ${countSRTEntries(latestSRT)} subtitle blocks ready.`;
+                    }
+                    if(subtitleValue){
+                        subtitleValue.textContent =
+                            `${countSRTEntries(latestSRT)} blocks ready`;
+                    }
+                }
+            };
             audio.src = latestVoiceObjectUrl;
             audio.load();
         }
 
-        const audioDuration = await getAudioDuration(audio, data.text);
+        /*
+          Do not block subtitle generation on browser audio metadata.
+          Some Android browsers take several seconds to decode a freshly
+          created WAV blob. Generate usable SRT immediately from the script,
+          then refine timing when the browser exposes the real duration.
+        */
+        const estimatedDuration =
+            Math.max(
+                3,
+                data.text.trim().split(/\s+/).filter(Boolean).length / 2.45
+            );
 
         latestSRT = buildSRTFromScript(
             data.text,
-            audioDuration
+            estimatedDuration
         );
 
         const titleSlug =
