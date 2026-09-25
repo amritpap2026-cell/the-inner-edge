@@ -2406,7 +2406,7 @@ It's fewer interruptions.
 
                 <div class="voice-actions">
                     <button class="btn" id="downloadVoiceButton" onclick="downloadVoice()" disabled>
-                        Download MP3
+                        Download Audio
                     </button>
                     <button class="btn" id="downloadSrtButton" onclick="downloadSRT()" disabled>
                         Download SRT
@@ -2683,13 +2683,12 @@ It's fewer interruptions.
             </p>
 
             <div class="platform-status">
-                YouTube publishing will be added after the core production
-                engine is operational.
+                Prepare a ready-to-copy YouTube title, description and hashtags from the current project. Direct YouTube publishing is not enabled yet.
             </div>
 
             <button class="btn"
                     style="margin-top:14px;"
-                    onclick="showToast('YouTube publishing is planned for a later phase.')">
+                    onclick="preparePlatform('YouTube')">
                 Prepare YouTube
             </button>
 
@@ -2713,12 +2712,12 @@ It's fewer interruptions.
             </p>
 
             <div class="platform-status">
-                Instagram publishing will be added after the core workflow.
+                Prepare a ready-to-copy Reel caption and hashtags from the current project. Direct Instagram publishing is not enabled yet.
             </div>
 
             <button class="btn"
                     style="margin-top:14px;"
-                    onclick="showToast('Instagram publishing is planned for a later phase.')">
+                    onclick="preparePlatform('Instagram')">
                 Prepare Instagram
             </button>
 
@@ -2743,13 +2742,12 @@ It's fewer interruptions.
             </p>
 
             <div class="platform-status">
-                Export functionality will connect to generated MP4 files in
-                the video backend.
+                Download the latest rendered video. If no video exists yet, The Inner Edge will take you to Video Studio.
             </div>
 
             <button class="btn"
                     style="margin-top:14px;"
-                    onclick="showToast('MP4 export will be enabled with the video engine.')">
+                    onclick="exportCurrentVideo()">
                 Export Video
             </button>
 
@@ -2945,7 +2943,7 @@ It's fewer interruptions.
             </div>
 
             <button class="btn"
-                    onclick="showToast('Brand voice editor will be added in the next build.')">
+                    onclick="configureBrandVoice()">
                 Configure
             </button>
 
@@ -3339,7 +3337,8 @@ Format: ${format}
 Style: ${style}
 
 Brand voice:
-Cinematic, intelligent, concise, engaging, and educational.
+${getStoredBrandVoice()}
+Cinematic, concise, engaging, and educational.
 Avoid generic motivational clichés.
 Target audience: 18–35 year olds interested in useful, curiosity-driven
 content about psychology, human behavior, self-improvement, discipline,
@@ -4527,7 +4526,8 @@ async function generateVoice(){
                 .slice(0,70) ||
             "the-inner-edge-video";
 
-        latestVoiceFileName = `${titleSlug}-voice.wav`;
+        const audioExtension = String(result.audioFormat || "").toLowerCase() === "mp3" ? "mp3" : "wav";
+        latestVoiceFileName = `${titleSlug}-voice.${audioExtension}`;
 
         const usedEngine =
             result.engine ||
@@ -5033,7 +5033,7 @@ async function renderFinalVideo(){
 
         if(info){
             info.textContent=
-                "Found "+usable+" stock clips. Starting mobile-safe renderer...";
+                "Found "+usable+" stock clips. Starting 24 FPS mobile-safe renderer...";
         }
 
         if(status){
@@ -5048,7 +5048,8 @@ async function renderFinalVideo(){
         */
         const WIDTH=360;
         const HEIGHT=640;
-        const FPS=20;
+        // TikTok requires at least 23 FPS. Use 24 FPS for the exported video.
+        const FPS=24;
 
         const canvas=document.createElement("canvas");
         canvas.width=WIDTH;
@@ -5320,6 +5321,7 @@ async function renderFinalVideo(){
                 " stock scenes used.";
         }
 
+        updateTikTokPublishButton();
         showToast("Final video rendered.");
 
     }catch(error){
@@ -5357,6 +5359,8 @@ function downloadRenderedVideo(){
     link.click();
     link.remove();
 
+    const exportStatus=document.getElementById("exportStatus");
+    if(exportStatus) exportStatus.textContent="Latest rendered video download started.";
     showToast("Video download started.");
 }
 
@@ -5369,6 +5373,7 @@ function updateVideoRendererState(){
               latestSRT.trim()&&
               latestProductionPlan?.scenes?.length);
     }
+    updateTikTokPublishButton();
 }
 
 
@@ -5647,6 +5652,7 @@ function loadSavedProject(id){
     latestVoiceBlob = null;
     latestSRT = "";
     renderedVideoBlob = null;
+    updateTikTokPublishButton();
 
     const voiceAudio = document.getElementById("voiceAudio");
     const srtOutput = document.getElementById("srtOutput");
@@ -5726,6 +5732,73 @@ function initializeProjectLibrary(){
 
 
 /* =========================================================
+   PLATFORM PREPARATION / EXPORT
+========================================================= */
+
+async function preparePlatform(platform){
+    const data = getLatestScriptData();
+    const title = String(data.topic || document.getElementById("scriptTitle")?.textContent || "The Inner Edge Video").trim();
+    const caption = String(data.caption || "").trim();
+    const hashtags = String(data.hashtags || "").trim();
+
+    if(!title && !data.script){
+        showToast("Create a script first.");
+        showPage("studio");
+        return;
+    }
+
+    const packageText = platform === "YouTube"
+        ? ["THE INNER EDGE — YOUTUBE PACKAGE","", "Title:",title,"","Description:",caption || data.script,"","Hashtags:",hashtags].join("\n")
+        : ["THE INNER EDGE — INSTAGRAM REEL PACKAGE","", "Caption:",caption || data.script,"","Hashtags:",hashtags].join("\n");
+
+    try{
+        await navigator.clipboard.writeText(packageText);
+        showToast(`${platform} package copied to clipboard.`);
+    }catch(error){
+        showToast(`${platform} package prepared. Copy is unavailable in this browser.`);
+    }
+
+    const status=document.getElementById(
+        platform==="YouTube" ? "youtubePrepareStatus" : "instagramPrepareStatus"
+    );
+    if(status) status.textContent=`${platform} package ready: content and hashtags prepared.`;
+
+    if(!renderedVideoBlob) showPage("video");
+}
+
+function exportCurrentVideo(){
+    if(renderedVideoBlob){
+        downloadRenderedVideo();
+        return;
+    }
+    showToast("Create the final video first.");
+    showPage("video");
+}
+
+function configureBrandVoice(){
+    const key="theInnerEdgeBrandVoiceV1";
+    const current=localStorage.getItem(key) || "Calm, intelligent, direct and curiosity-driven.";
+    const value=window.prompt("Enter your preferred brand voice:",current);
+    if(value===null) return;
+
+    const cleaned=value.trim();
+    if(!cleaned){
+        showToast("Brand voice was not changed.");
+        return;
+    }
+
+    localStorage.setItem(key,cleaned);
+    const description=document.querySelector("#settings .setting-row:nth-child(4) .setting-description");
+    if(description) description.textContent=cleaned;
+    showToast("Brand voice saved.");
+}
+
+function getStoredBrandVoice(){
+    return localStorage.getItem("theInnerEdgeBrandVoiceV1")
+        || "Calm, intelligent, direct and curiosity-driven.";
+}
+
+/* =========================================================
    SETTINGS
 ========================================================= */
 
@@ -5765,6 +5838,9 @@ document.addEventListener("keydown",(event)=>{
 ========================================================= */
 
 initializeProjectLibrary();
+const savedBrandVoice=getStoredBrandVoice();
+const brandVoiceDescription=document.querySelector("#settings .setting-row:nth-child(4) .setting-description");
+if(brandVoiceDescription) brandVoiceDescription.textContent=savedBrandVoice;
 initializeTikTokIntegration();
 document.getElementById("tiktokConsent")?.addEventListener("change",updateTikTokPublishButton);
 const tiktokParams=new URLSearchParams(window.location.search);
