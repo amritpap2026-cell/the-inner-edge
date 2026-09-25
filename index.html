@@ -2642,6 +2642,11 @@ It's fewer interruptions.
                 Render a final video in Video Studio before posting.
             </div>
 
+            <label class="platform-status" style="display:block;margin-top:10px;cursor:pointer;">
+                <input type="checkbox" id="tiktokConsent" style="margin-right:7px;">
+                I confirm that I want The Inner Edge to send this video to my TikTok account using the Content Posting API.
+            </label>
+
             <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:14px;">
                 <button class="btn btn-primary" id="publishTikTokButton" onclick="publishToTikTok()" disabled>
                     ↗ Post to TikTok
@@ -3866,10 +3871,10 @@ function copyProductionPlan(){
 let latestProductionPlan = null;
 
 const VOICE_ENDPOINT = "https://the-inner-edge.vercel.app/api/voice";
-const TIKTOK_LOGIN_ENDPOINT = "https://the-inner-edge.vercel.app/api/tiktok/login";
-const TIKTOK_CREATOR_ENDPOINT = "https://the-inner-edge.vercel.app/api/tiktok/creator";
-const TIKTOK_PUBLISH_ENDPOINT = "https://the-inner-edge.vercel.app/api/tiktok/publish";
-const TIKTOK_STATUS_ENDPOINT = "https://the-inner-edge.vercel.app/api/tiktok/status";
+const TIKTOK_LOGIN_ENDPOINT = "/api/tiktok/login";
+const TIKTOK_CREATOR_ENDPOINT = "/api/tiktok/creator";
+const TIKTOK_PUBLISH_ENDPOINT = "/api/tiktok/publish";
+const TIKTOK_STATUS_ENDPOINT = "/api/tiktok/status";
 
 let tiktokCreator = null;
 let tiktokPublishId = null;
@@ -4199,7 +4204,7 @@ async function loadTikTokCreator(){
 function updateTikTokPublishButton(){
     const button=document.getElementById("publishTikTokButton");
     const videoState=document.getElementById("tiktokVideoState");
-    const ready=Boolean(tiktokCreator && renderedVideoBlob);
+    const ready=Boolean(tiktokCreator && renderedVideoBlob && document.getElementById("tiktokConsent")?.checked);
 
     if(button) button.disabled=!ready;
 
@@ -4231,6 +4236,11 @@ async function publishToTikTok(){
     }
 
     const caption=(document.getElementById("tiktokCaption")?.value||"").trim();
+    if(!document.getElementById("tiktokConsent")?.checked){
+        showToast("Confirm that you want to send the video to TikTok.");
+        return;
+    }
+
     const comments=Boolean(document.getElementById("tiktokComments")?.checked);
     const duet=Boolean(document.getElementById("tiktokDuet")?.checked);
     const stitch=Boolean(document.getElementById("tiktokStitch")?.checked);
@@ -5756,6 +5766,10 @@ document.addEventListener("keydown",(event)=>{
 
 initializeProjectLibrary();
 initializeTikTokIntegration();
+document.getElementById("tiktokConsent")?.addEventListener("change",updateTikTokPublishButton);
+const tiktokParams=new URLSearchParams(window.location.search);
+if(tiktokParams.get("tiktok")==="connected") showToast("TikTok connected. Creator settings are ready.");
+if(tiktokParams.get("tiktok_error")) showToast("TikTok connection was not completed.");
 showPage("dashboard");
 
 </script>
