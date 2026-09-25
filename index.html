@@ -2568,46 +2568,96 @@ It's fewer interruptions.
 
         <div>
             <h2>Publish Center</h2>
-            <p>Prepare finished content for distribution.</p>
+            <p>Export finished content through official platform integrations.</p>
         </div>
 
-        <span class="badge">Integrations Coming Next</span>
+        <span class="badge">Production Workflow</span>
 
     </div>
 
+    <div class="platform" style="margin-bottom:16px;">
 
-    <div class="publish-grid">
-
-
-        <div class="platform">
-
-            <div class="platform-top">
-
-                <div class="platform-icon">♪</div>
-
-                <span class="pill draft">Not Connected</span>
-
+        <div class="platform-top">
+            <div>
+                <div style="font-size:11px;color:var(--gold);letter-spacing:.14em;text-transform:uppercase;">
+                    Content Posting API
+                </div>
+                <h3 style="margin-top:7px;">TikTok Direct Post</h3>
             </div>
+            <span class="pill draft" id="tiktokConnectionStatus">Not connected</span>
+        </div>
 
-            <h3>TikTok</h3>
+        <p style="margin-top:10px;">
+            Connect your TikTok account, review the creator's available posting
+            settings, then send the rendered video directly to TikTok.
+            The Inner Edge never asks for your TikTok password.
+        </p>
 
-            <p>
-                Connect The Inner Edge to TikTok through the official
-                authorization and Content Posting API workflow.
-            </p>
+        <div class="platform-status" id="tiktokConnectionInfo">
+            Connect TikTok to load the account-specific posting options required
+            by the Content Posting API.
+        </div>
 
-            <div class="platform-status">
-                TikTok integration will be connected after the backend and
-                Developer App configuration are ready.
-            </div>
-
-            <button class="btn"
-                    style="margin-top:14px;"
-                    onclick="showToast('TikTok connection is a Phase 4 integration.')">
+        <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:14px;">
+            <button class="btn btn-primary" id="connectTikTokButton" onclick="connectTikTok()">
                 Connect TikTok
             </button>
-
+            <button class="btn" id="refreshTikTokButton" onclick="loadTikTokCreator()" disabled>
+                Refresh creator settings
+            </button>
         </div>
+
+        <div id="tiktokExportPanel" style="display:none;margin-top:18px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="field">
+                    <label>TikTok caption</label>
+                    <textarea class="textarea" id="tiktokCaption" maxlength="2200"
+                              placeholder="Write your TikTok caption..."></textarea>
+                </div>
+
+                <div>
+                    <div class="field">
+                        <label>Who can view this video</label>
+                        <select class="select" id="tiktokPrivacy"></select>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                        <label class="platform-status" style="cursor:pointer;">
+                            <input type="checkbox" id="tiktokComments" style="margin-right:6px;">
+                            Comments
+                        </label>
+                        <label class="platform-status" style="cursor:pointer;">
+                            <input type="checkbox" id="tiktokDuet" style="margin-right:6px;">
+                            Duet
+                        </label>
+                        <label class="platform-status" style="cursor:pointer;">
+                            <input type="checkbox" id="tiktokStitch" style="margin-right:6px;">
+                            Stitch
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="platform-status" id="tiktokVideoState">
+                Render a final video in Video Studio before posting.
+            </div>
+
+            <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:14px;">
+                <button class="btn btn-primary" id="publishTikTokButton" onclick="publishToTikTok()" disabled>
+                    ↗ Post to TikTok
+                </button>
+                <button class="btn" onclick="showPage('video')">
+                    Open Video Studio
+                </button>
+            </div>
+
+            <div class="platform-status" id="tiktokPublishStatus" style="margin-top:12px;">
+                Nothing posted yet.
+            </div>
+        </div>
+    </div>
+
+    <div class="publish-grid">
 
 
         <div class="platform">
@@ -3816,7 +3866,13 @@ function copyProductionPlan(){
 let latestProductionPlan = null;
 
 const VOICE_ENDPOINT = "https://the-inner-edge.vercel.app/api/voice";
+const TIKTOK_LOGIN_ENDPOINT = "https://the-inner-edge.vercel.app/api/tiktok/login";
+const TIKTOK_CREATOR_ENDPOINT = "https://the-inner-edge.vercel.app/api/tiktok/creator";
+const TIKTOK_PUBLISH_ENDPOINT = "https://the-inner-edge.vercel.app/api/tiktok/publish";
+const TIKTOK_STATUS_ENDPOINT = "https://the-inner-edge.vercel.app/api/tiktok/status";
 
+let tiktokCreator = null;
+let tiktokPublishId = null;
 let latestVoiceBlob = null;
 let latestVoiceObjectUrl = "";
 let latestSRT = "";
@@ -4064,6 +4120,218 @@ async function getAudioDuration(audio, fallbackText){
         .length;
 
     return Math.max(3, wordCount / 2.45);
+}
+
+
+/* =========================================================
+   TIKTOK CONTENT POSTING API
+========================================================= */
+
+function setTikTokConnection(connected, message){
+    const status=document.getElementById("tiktokConnectionStatus");
+    const info=document.getElementById("tiktokConnectionInfo");
+    const refresh=document.getElementById("refreshTikTokButton");
+    const panel=document.getElementById("tiktokExportPanel");
+
+    if(status){
+        status.textContent=connected ? "Connected" : "Not connected";
+        status.className=connected ? "pill ready" : "pill draft";
+    }
+    if(info && message) info.textContent=message;
+    if(refresh) refresh.disabled=!connected;
+    if(panel) panel.style.display=connected ? "block" : "none";
+}
+
+function connectTikTok(){
+    window.location.href=TIKTOK_LOGIN_ENDPOINT;
+}
+
+function humanPrivacyLabel(value){
+    const labels={
+        PUBLIC_TO_EVERYONE:"Everyone",
+        MUTUAL_FOLLOW_FRIENDS:"Friends / mutual follows",
+        FOLLOWER_OF_CREATOR:"Followers",
+        SELF_ONLY:"Only me"
+    };
+    return labels[value] || value;
+}
+
+async function loadTikTokCreator(){
+    const status=document.getElementById("tiktokPublishStatus");
+    try{
+        if(status) status.textContent="Loading TikTok creator settings...";
+        const response=await fetch(TIKTOK_CREATOR_ENDPOINT,{credentials:"include"});
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok || !data.ok){
+            setTikTokConnection(false,data.error||"TikTok is not connected.");
+            if(status) status.textContent="Connect TikTok to continue.";
+            return false;
+        }
+
+        tiktokCreator=data.creator;
+        setTikTokConnection(
+            true,
+            `Connected as @${data.creator.creator_username || data.creator.creator_nickname || "TikTok creator"}. Posting settings are loaded from TikTok.`
+        );
+
+        const privacy=document.getElementById("tiktokPrivacy");
+        if(privacy){
+            privacy.innerHTML=(data.creator.privacy_level_options||[])
+                .map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(humanPrivacyLabel(v))}</option>`)
+                .join("");
+        }
+
+        const comments=document.getElementById("tiktokComments");
+        const duet=document.getElementById("tiktokDuet");
+        const stitch=document.getElementById("tiktokStitch");
+        if(comments) comments.checked=!Boolean(data.creator.comment_disabled);
+        if(duet) duet.checked=!Boolean(data.creator.duet_disabled);
+        if(stitch) stitch.checked=!Boolean(data.creator.stitch_disabled);
+
+        updateTikTokPublishButton();
+        return true;
+    }catch(error){
+        setTikTokConnection(false,error.message||"Could not connect to TikTok.");
+        return false;
+    }
+}
+
+function updateTikTokPublishButton(){
+    const button=document.getElementById("publishTikTokButton");
+    const videoState=document.getElementById("tiktokVideoState");
+    const ready=Boolean(tiktokCreator && renderedVideoBlob);
+
+    if(button) button.disabled=!ready;
+
+    if(videoState){
+        videoState.textContent=renderedVideoBlob
+            ? `Final video ready: ${formatBytes(renderedVideoBlob.size)}. Review the TikTok settings above before posting.`
+            : "Render a final video in Video Studio before posting.";
+    }
+}
+
+async function publishToTikTok(){
+    if(!tiktokCreator){
+        showToast("Connect TikTok first.");
+        return;
+    }
+    if(!renderedVideoBlob){
+        showToast("Render the final video first.");
+        showPage("video");
+        return;
+    }
+
+    const button=document.getElementById("publishTikTokButton");
+    const status=document.getElementById("tiktokPublishStatus");
+    const privacy=document.getElementById("tiktokPrivacy")?.value;
+
+    if(!privacy){
+        showToast("Choose a TikTok privacy setting.");
+        return;
+    }
+
+    const caption=(document.getElementById("tiktokCaption")?.value||"").trim();
+    const comments=Boolean(document.getElementById("tiktokComments")?.checked);
+    const duet=Boolean(document.getElementById("tiktokDuet")?.checked);
+    const stitch=Boolean(document.getElementById("tiktokStitch")?.checked);
+
+    try{
+        button.disabled=true;
+        if(status) status.textContent="Preparing upload with TikTok...";
+
+        const initResponse=await fetch(TIKTOK_PUBLISH_ENDPOINT,{
+            method:"POST",
+            credentials:"include",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+                title:caption,
+                privacy_level:privacy,
+                disable_comment:!comments,
+                disable_duet:!duet,
+                disable_stitch:!stitch,
+                video_size:renderedVideoBlob.size
+            })
+        });
+
+        const init=await initResponse.json().catch(()=>({}));
+        if(!initResponse.ok || !init.ok){
+            throw new Error(init.error||"TikTok could not initialize the post.");
+        }
+
+        tiktokPublishId=init.publish_id;
+
+        const total=renderedVideoBlob.size;
+        const chunkSize=total<5*1024*1024 ? total : Math.min(10*1024*1024,total);
+        const totalChunks=Math.ceil(total/chunkSize);
+
+        for(let i=0;i<totalChunks;i++){
+            const start=i*chunkSize;
+            const end=Math.min(start+chunkSize,total);
+            const chunk=renderedVideoBlob.slice(start,end,"video/webm");
+
+            if(status) status.textContent=`Uploading to TikTok: ${i+1}/${totalChunks}...`;
+
+            const uploadResponse=await fetch(init.upload_url,{
+                method:"PUT",
+                headers:{
+                    "Content-Type":"video/webm",
+                    "Content-Length":String(end-start),
+                    "Content-Range":`bytes ${start}-${end-1}/${total}`
+                },
+                body:chunk
+            });
+
+            if(!uploadResponse.ok){
+                throw new Error(`TikTok media upload failed (${uploadResponse.status}).`);
+            }
+        }
+
+        if(status) status.textContent="TikTok is processing the video...";
+
+        let finalStatus=null;
+        for(let attempt=0;attempt<12;attempt++){
+            await new Promise(resolve=>setTimeout(resolve,2500));
+            const response=await fetch(TIKTOK_STATUS_ENDPOINT,{
+                method:"POST",
+                credentials:"include",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({publish_id:tiktokPublishId})
+            });
+            const data=await response.json().catch(()=>({}));
+            if(!response.ok || !data.ok) throw new Error(data.error||"Could not read TikTok post status.");
+            finalStatus=data.status;
+            if(["PUBLISH_COMPLETE","FAILED","SEND_TO_USER_INBOX"].includes(finalStatus)) break;
+        }
+
+        if(finalStatus==="PUBLISH_COMPLETE"){
+            if(status) status.textContent="Published successfully to TikTok.";
+            showToast("TikTok post completed.");
+        }else if(finalStatus==="SEND_TO_USER_INBOX"){
+            if(status) status.textContent="TikTok sent the video to the creator inbox for the next step.";
+            showToast("TikTok upload is ready in the creator inbox.");
+        }else if(finalStatus==="FAILED"){
+            throw new Error("TikTok reported that the post failed.");
+        }else{
+            if(status) status.textContent=`TikTok is still processing. Publish ID: ${tiktokPublishId}`;
+            showToast("TikTok is still processing the post.");
+        }
+    }catch(error){
+        console.error("TikTok publish error:",error);
+        if(status) status.textContent=error.message||"TikTok publishing failed.";
+        showToast("TikTok publishing failed.");
+    }finally{
+        updateTikTokPublishButton();
+    }
+}
+
+async function initializeTikTokIntegration(){
+    try{
+        const response=await fetch(TIKTOK_CREATOR_ENDPOINT,{credentials:"include"});
+        if(response.ok) await loadTikTokCreator();
+        else setTikTokConnection(false,"Connect your TikTok account to enable Direct Post.");
+    }catch(error){
+        setTikTokConnection(false,"Connect your TikTok account to enable Direct Post.");
+    }
 }
 
 function setVoiceStatus(text, ready=false){
@@ -5487,6 +5755,7 @@ document.addEventListener("keydown",(event)=>{
 ========================================================= */
 
 initializeProjectLibrary();
+initializeTikTokIntegration();
 showPage("dashboard");
 
 </script>
