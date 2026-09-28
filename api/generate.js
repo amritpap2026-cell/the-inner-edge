@@ -3,7 +3,7 @@ export default async function handler(req, res) {
     // CORS
     res.setHeader(
         "Access-Control-Allow-Origin",
-        "https://amritpap2026-cell.github.io"
+        "https://the-inner-edge.vercel.app"
     );
 
     res.setHeader(
