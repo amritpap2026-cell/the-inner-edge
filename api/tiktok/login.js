@@ -42,7 +42,6 @@ export default function handler(req, res) {
         // =========================
 
         const clientKey = process.env.TIKTOK_CLIENT_KEY;
-        const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
         const redirectUri = process.env.TIKTOK_REDIRECT_URI;
 
         // Validate required environment variables
@@ -61,6 +60,14 @@ export default function handler(req, res) {
         }
 
         // =========================
+        // Sanitize inputs
+        // =========================
+
+        // Trim whitespace/newlines that may have crept in from copy-paste
+        const cleanClientKey = String(clientKey).trim();
+        const cleanRedirectUri = String(redirectUri).trim();
+
+        // =========================
         // Generate State Token (CSRF Protection)
         // =========================
 
@@ -76,21 +83,34 @@ export default function handler(req, res) {
         // Build TikTok Authorization URL
         // =========================
 
-        // Request scopes: user.info.basic is required for login
-        // Add video.publish and video.upload if your app needs posting capabilities
-        const scope = "user.info.basic,video.publish,video.upload";
+        // Minimal scope — only request what your app is approved for.
+        // Add video.publish / video.upload here ONLY after TikTok approves them.
+        const scope = "user.info.basic";
 
         const authParams = new URLSearchParams({
-            client_key: clientKey,
+            client_key: cleanClientKey,
             scope: scope,
-            redirect_uri: redirectUri,
+            redirect_uri: cleanRedirectUri,
             state: state,
             response_type: "code"
         });
 
         const authorizationUrl = `https://www.tiktok.com/v2/auth/authorize/?${authParams.toString()}`;
 
-        console.log("Redirecting to TikTok authorization URL:", authorizationUrl);
+        // =========================
+        // DEBUG — Log the exact URL being sent
+        // =========================
+
+        console.log("===== TIKTOK LOGIN DEBUG =====");
+        console.log("Client Key (raw length):", clientKey ? clientKey.length : 0);
+        console.log("Client Key (clean length):", cleanClientKey.length);
+        console.log("Client Key (first 6 chars):", cleanClientKey.substring(0, 6));
+        console.log("Redirect URI (raw):", JSON.stringify(redirectUri));
+        console.log("Redirect URI (clean):", JSON.stringify(cleanRedirectUri));
+        console.log("Scope:", scope);
+        console.log("State:", state);
+        console.log("Full Authorization URL:", authorizationUrl);
+        console.log("==============================");
 
         // =========================
         // Redirect User to TikTok
