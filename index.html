@@ -4270,8 +4270,8 @@ async function publishToTikTok(){
         tiktokPublishId=init.publish_id;
 
         const total=renderedVideoBlob.size;
-        const chunkSize=total<5*1024*1024 ? total : Math.min(10*1024*1024,total);
-        const totalChunks=Math.ceil(total/chunkSize);
+        const chunkSize=init.chunk_size;
+        const totalChunks=init.total_chunk_count;
 
         for(let i=0;i<totalChunks;i++){
             const start=i*chunkSize;
