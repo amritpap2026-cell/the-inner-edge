@@ -215,7 +215,6 @@ function isEngineAvailable(engine) {
 /**
  * Generates audio using Microsoft Edge's online TTS service.
  * This is the primary engine because it requires no API key.
- * Uses the official WebSocket endpoint that Edge uses internally.
  */
 async function generateWithEdgeTTS(text, voiceName) {
 
@@ -231,8 +230,7 @@ async function generateWithEdgeTTS(text, voiceName) {
 
     const resolvedVoice = voiceMap[voiceName] || "en-US-GuyNeural";
 
-    // Edge TTS requires a specific WebSocket handshake.
-    // We'll use the free endpoint with the required headers.
+    // Edge TTS endpoint
     const edgeTtsUrl = "https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4";
 
     // Build SSML for Edge TTS
@@ -244,12 +242,6 @@ async function generateWithEdgeTTS(text, voiceName) {
         "</speak>"
     ].join("");
 
-    // Edge TTS works over WebSocket, but we can also use the
-    // simplified HTTP endpoint that some libraries use.
-    // For reliability in serverless, we'll use the free WebSocket-based
-    // approach via a direct HTTP call to the synthesis service.
-
-    // Attempt the HTTP-based Edge TTS endpoint
     const response = await fetch(edgeTtsUrl, {
         method: "POST",
         headers: {
@@ -357,6 +349,9 @@ async function generateWithGoogleTTS(text, voiceName) {
 /**
  * Generates audio using ElevenLabs API.
  * Requires ELEVENLABS_API_KEY environment variable.
+ *
+ * Note: as of 2026, eleven_monolingual_v1 and eleven_multilingual_v1
+ * are deprecated. We use eleven_multilingual_v2 for best quality.
  */
 async function generateWithElevenLabs(text, voiceName) {
 
@@ -390,7 +385,7 @@ async function generateWithElevenLabs(text, voiceName) {
             },
             body: JSON.stringify({
                 text: text,
-                model_id: "eleven_monolingual_v1",
+                model_id: "eleven_multilingual_v2",
                 voice_settings: {
                     stability: 0.5,
                     similarity_boost: 0.75,
