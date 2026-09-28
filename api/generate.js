@@ -1,10 +1,25 @@
+// api/generate.js
+// The Inner Edge — Gemini AI generation endpoint
+
 export default async function handler(req, res) {
 
+    // =========================
     // CORS
-    res.setHeader(
-        "Access-Control-Allow-Origin",
-        "https://the-inner-edge.vercel.app"
-    );
+    // =========================
+
+    const allowedOrigins = [
+        "https://the-inner-edge.vercel.app",
+        "https://amritpap2026-cell.github.io"
+    ];
+
+    const origin = req.headers.origin;
+
+    if (allowedOrigins.includes(origin)) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+    } else {
+        // Fallback — allows direct API calls (e.g. curl/Postman) but blocks unknown browsers
+        res.setHeader("Access-Control-Allow-Origin", allowedOrigins[0]);
+    }
 
     res.setHeader(
         "Access-Control-Allow-Methods",
@@ -16,12 +31,14 @@ export default async function handler(req, res) {
         "Content-Type"
     );
 
-    // Browser CORS check
+    res.setHeader("Vary", "Origin");
+
+    // Browser CORS preflight
     if (req.method === "OPTIONS") {
         return res.status(200).end();
     }
 
-    // Only POST
+    // Only POST allowed
     if (req.method !== "POST") {
         return res.status(405).json({
             error: "Method not allowed"
@@ -46,7 +63,7 @@ export default async function handler(req, res) {
             });
         }
 
-        // Models to try
+        // Models to try, in order
         const models = [
             "gemini-3.6-flash",
             "gemini-3.5-flash-lite"
@@ -106,7 +123,7 @@ export default async function handler(req, res) {
                         });
                     }
 
-                    // Save error
+                    // Save error for later
                     lastError = data;
 
                     console.error(
