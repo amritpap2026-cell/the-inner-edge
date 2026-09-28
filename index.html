@@ -4274,21 +4274,21 @@ async function publishToTikTok(){
         const totalChunks=Math.ceil(total/chunkSize);
 
         for(let i=0;i<totalChunks;i++){
-            const start=i*chunkSize;
-            const end=Math.min(start+chunkSize,total);
-            const chunk=renderedVideoBlob.slice(start,end,"video/webm");
+    const start=i*chunkSize;
+    const end=Math.min(start+chunkSize,total);
+    const chunk=renderedVideoBlob.slice(start,end,renderedVideoBlob.type);
 
-            if(status) status.textContent=`Uploading to TikTok: ${i+1}/${totalChunks}...`;
+    if(status) status.textContent=`Uploading to TikTok: ${i+1}/${totalChunks}...`;
 
-            const uploadResponse=await fetch(init.upload_url,{
-                method:"PUT",
-                headers:{
-                    "Content-Type":"video/webm",
-                    "Content-Length":String(end-start),
-                    "Content-Range":`bytes ${start}-${end-1}/${total}`
-                },
-                body:chunk
-            });
+    const uploadResponse=await fetch(init.upload_url,{
+        method:"PUT",
+        headers:{
+            "Content-Type": renderedVideoBlob.type || "video/webm",
+            "Content-Length":String(end-start),
+            "Content-Range":`bytes ${start}-${end-1}/${total}`
+        },
+        body:chunk
+    });
 
             if(!uploadResponse.ok){
                 throw new Error(`TikTok media upload failed (${uploadResponse.status}).`);
