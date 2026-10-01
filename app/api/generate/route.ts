@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY
+    const apiKey = (process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY)?.trim()
     if (!apiKey) throw new Error('GEMINI_API_KEY is not available to the server. Redeploy after saving the variable.')
 
     const prompt = `You are a YouTube education strategist for Cosmos, a NASA and space exploration channel. Create a compelling video package in ${language} about: ${topic.trim()}.
@@ -48,21 +48,36 @@ Return valid JSON only with these keys:
 
 Do not claim NASA endorsement. Be factual and accessible for curious learners.`
 
-    const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
-      {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 25_000)
+    const endpoint = new URL('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent')
+    endpoint.searchParams.set('key', apiKey)
+
+    let response: Response
+    try {
+      response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
         }),
-      },
-    )
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
 
     if (!response.ok) {
       const details = await response.text()
-      throw new Error(`Gemini API ${response.status}: ${details.slice(0, 300)}`)
+      const message = (() => {
+        try {
+          return JSON.parse(details).error?.message
+        } catch {
+          return details
+        }
+      })()
+      throw new Error(`Gemini API ${response.status}: ${message || 'request rejected'}`)
     }
 
     const payload = await response.json()
