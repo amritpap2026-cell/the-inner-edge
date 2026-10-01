@@ -1,4 +1,3 @@
-import { generateText } from 'ai'
 import { NextResponse } from 'next/server'
 
 function createFallbackPackage(topic: string, language: string) {
@@ -34,9 +33,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await generateText({
-      model: 'google/gemini-2.5-flash',
-      prompt: `You are a YouTube education strategist for Cosmos, a NASA and space exploration channel. Create a compelling video package in ${language} about: ${topic.trim()}.
+    const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY
+    if (!apiKey) throw new Error('GEMINI_API_KEY is not available to the server. Redeploy after saving the variable.')
+
+    const prompt = `You are a YouTube education strategist for Cosmos, a NASA and space exploration channel. Create a compelling video package in ${language} about: ${topic.trim()}.
 
 Return valid JSON only with these keys:
 - title: an intriguing YouTube title
@@ -46,11 +46,29 @@ Return valid JSON only with these keys:
 - hook: a one-sentence opening hook
 - thumbnailText: 3-5 words for thumbnail text
 
-Do not claim NASA endorsement. Be factual and accessible for curious learners.`,
-    })
+Do not claim NASA endorsement. Be factual and accessible for curious learners.`
 
-    const text = result.text.replace(/^```json\s*|\s*```$/g, '').trim()
-    return NextResponse.json(JSON.parse(text))
+    const response = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
+        }),
+      },
+    )
+
+    if (!response.ok) {
+      const details = await response.text()
+      throw new Error(`Gemini API ${response.status}: ${details.slice(0, 300)}`)
+    }
+
+    const payload = await response.json()
+    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text
+    if (typeof text !== 'string' || !text.trim()) throw new Error('Gemini returned no content')
+    return NextResponse.json(JSON.parse(text.replace(/^```json\s*|\s*```$/g, '').trim()))
   } catch (error) {
     console.error('[v0] AI generation unavailable, using free fallback:', error)
     return NextResponse.json({ ...createFallbackPackage(topic.trim(), language), fallback: true })
