@@ -48,42 +48,56 @@ Return valid JSON only with these keys:
 
 Do not claim NASA endorsement. Be factual and accessible for curious learners.`
 
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 25_000)
-    const endpoint = new URL('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent')
-    endpoint.searchParams.set('key', apiKey)
-
-    let response: Response
-    try {
-      response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
-        }),
-      })
-    } finally {
-      clearTimeout(timeout)
+    const requestBody = {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
     }
+    const freeTierModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
+    const failures: string[] = []
 
-    if (!response.ok) {
-      const details = await response.text()
-      const message = (() => {
-        try {
-          return JSON.parse(details).error?.message
-        } catch {
-          return details
+    for (const model of freeTierModels) {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 25_000)
+      const endpoint = new URL(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`)
+      endpoint.searchParams.set('key', apiKey)
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify(requestBody),
+        })
+
+        if (!response.ok) {
+          const details = await response.text()
+          const message = (() => {
+            try {
+              return JSON.parse(details).error?.message
+            } catch {
+              return details
+            }
+          })()
+          failures.push(`${model}: ${response.status} ${message || 'request rejected'}`)
+          continue
         }
-      })()
-      throw new Error(`Gemini API ${response.status}: ${message || 'request rejected'}`)
+
+        const payload = await response.json()
+        const text = payload.candidates?.[0]?.content?.parts?.[0]?.text
+        if (typeof text !== 'string' || !text.trim()) {
+          failures.push(`${model}: Gemini returned no content`)
+          continue
+        }
+
+        return NextResponse.json(JSON.parse(text.replace(/^```json\s*|\s*```$/g, '').trim()))
+      } catch (error) {
+        failures.push(`${model}: ${error instanceof Error ? error.message : 'request failed'}`)
+      } finally {
+        clearTimeout(timeout)
+      }
     }
 
-    const payload = await response.json()
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text
-    if (typeof text !== 'string' || !text.trim()) throw new Error('Gemini returned no content')
-    return NextResponse.json(JSON.parse(text.replace(/^```json\s*|\s*```$/g, '').trim()))
+    throw new Error(`All free Gemini models failed. ${failures.join(' | ')}`)
   } catch (error) {
     console.error('[v0] AI generation unavailable, using free fallback:', error)
     return NextResponse.json({ ...createFallbackPackage(topic.trim(), language), fallback: true })
